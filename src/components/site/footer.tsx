@@ -22,7 +22,8 @@ export function Footer() {
 
           <div className="md:col-span-4">
             <h2 className="text-caption text-ink/75">Hours</h2>
-            <p className="mt-3">{site.hours}</p>
+            <p className="mt-3">Every day, {site.hours}</p>
+            <p>{site.days}</p>
           </div>
 
           <nav aria-label="Footer" className="md:col-span-4">
@@ -35,11 +36,6 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link href="/credits" className="link-quiet">
-                  Photo credits
-                </Link>
-              </li>
             </ul>
           </nav>
         </div>

@@ -59,9 +59,28 @@ body {
   color: var(--color-paper);
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-bronze);
-  outline-offset: 3px;
+/* In the base layer so a component's own focus style (like the underlined
+   form fields) can replace it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-bronze);
+    outline-offset: 3px;
+  }
+}
+
+/* Browser autofill paints fields blue-white in a system font. Keep the page's
+   colours and type instead. Forms on a non-paper background set --field-bg. */
+input:-webkit-autofill,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-ink);
+  caret-color: var(--color-ink);
+  box-shadow: inset 0 0 0 100vmax var(--field-bg, var(--color-paper));
+  filter: none;
+  transition: background-color 0s 600000s, color 0s 600000s;
+}
+input:-webkit-autofill::first-line {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
 }
 
 /* Paper grain over the public site. Static, never animated. */

@@ -31,7 +31,10 @@ export function Visit() {
             </div>
             <div>
               <dt className="text-caption text-ink-soft">Hours</dt>
-              <dd className="mt-1">{site.hours}</dd>
+              <dd className="mt-1">
+                Every day, {site.hours}
+                <span className="block text-ink-soft">{site.days}</span>
+              </dd>
             </div>
             <div>
               <dt className="text-caption text-ink-soft">Talk to us</dt>

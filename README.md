@@ -2,7 +2,7 @@
 
 Website and admin for Ekagra Library (एकाग्र अभ्यासिका), a study library in Lohegaon, Pune.
 
-- **Public site:** homepage, gallery, photo credits.
+- **Public site:** homepage and gallery.
 - **Admin:** students, fee status, desk reservations and enquiries from the website form.
 
 Built with Next.js 16 (App Router, Cache Components), React 19, Tailwind CSS v4, Motion and Lenis. Data goes through Drizzle ORM to Neon Postgres.
@@ -70,13 +70,13 @@ npm run db:studio     # browse data
 ## Photos
 
 - **Gallery:** the library's own photos and video. Put new photos in `photos-inbox/` and run `npm run photos:import`. The script resizes them, strips EXIF data (including GPS) and writes `src/content/gallery-photos.json`. Then add a caption for each new file in `src/content/gallery.ts`.
-- **Homepage:** stock photos of other reading rooms from Wikimedia Commons, credited on `/credits` (`src/content/images.ts`).
+- **Homepage:** CC0 (public domain) stock photos of reading rooms from Wikimedia Commons, listed in `src/content/images.ts`. Use only CC0 or public-domain photos here, because the site no longer has a credits page.
 
 ## Where things are
 
 ```
 src/
-  app/(site)/        public pages: home, gallery, credits
+  app/(site)/        public pages: home, gallery
   app/admin/         admin (served from ADMIN_PATH): login, students, enquiries
   app/api/           students, seats, enquiries, health
   components/        home sections, gallery, admin, shared UI

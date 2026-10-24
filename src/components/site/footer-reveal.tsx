@@ -25,14 +25,17 @@ export function FooterReveal({ children }: { children: React.ReactNode }) {
   const { scrollYProgress } = useScroll({ target: spacer, offset: ["start end", "end end"] });
   const y = useTransform(scrollYProgress, [0, 1], ["-22%", "0%"]);
 
-  if (!roomy) return <>{children}</>;
-
   return (
     <>
-      <div ref={spacer} aria-hidden style={{ height }} />
-      <div ref={panel} className="fixed inset-x-0 bottom-0 z-0 bg-sand">
-        <motion.div style={{ y: reduce ? 0 : y }}>{children}</motion.div>
-      </div>
+      {/* Always rendered, because useScroll needs its target on the page. */}
+      <div ref={spacer} aria-hidden style={{ height: roomy ? height : 0 }} />
+      {roomy ? (
+        <div ref={panel} className="fixed inset-x-0 bottom-0 z-0 bg-sand">
+          <motion.div style={{ y: reduce ? 0 : y }}>{children}</motion.div>
+        </div>
+      ) : (
+        children
+      )}
     </>
   );
 }

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { buttonClass } from "@/components/ui/button";
 import { enquirySchema, type EnquiryField } from "@/lib/enquiry";
 import { cn } from "@/lib/cn";
+import { ExamSelect } from "./exam-select";
 
 type Values = Record<EnquiryField, string>;
 type Errors = Partial<Record<EnquiryField, string>>;
@@ -22,7 +23,7 @@ function check(values: Values): Errors {
   return Object.fromEntries(ORDER.filter((k) => fields[k]?.length).map((k) => [k, fields[k]![0]]));
 }
 
-// Chosen pills plus the "Other" text, e.g. "MPSC, UPSC, CA Foundation".
+// Chosen exams plus the "Other" text, e.g. "MPSC, UPSC, CA Foundation".
 const combineExams = (chosen: string[], other: string) =>
   [...chosen.filter((e) => e !== OTHER), chosen.includes(OTHER) ? other.trim() : ""].filter(Boolean).join(", ");
 
@@ -32,7 +33,7 @@ const formatPhone = (raw: string) => {
 };
 
 const fieldClass =
-  "mt-2 block w-full border-0 border-b border-rule bg-transparent px-0 py-2.5 text-body text-ink placeholder:text-ink-soft/70 focus:border-ink focus:ring-0 focus:outline-none aria-[invalid=true]:border-alert";
+  "mt-2 block w-full border-0 border-b border-rule bg-transparent px-0 py-2.5 text-body text-ink placeholder:text-ink-soft/70 focus:border-ink focus:shadow-[0_1px_0_0_var(--color-ink)] focus:outline-none aria-[invalid=true]:border-alert";
 
 export function EnquiryForm() {
   const [values, setValues] = useState<Values>(EMPTY);
@@ -42,7 +43,7 @@ export function EnquiryForm() {
   const [sent, setSent] = useState<{ name: string; phone: string } | null>(null);
   const [exams, setExams] = useState<string[]>([]);
 
-  // values.preparingFor holds only the "Other" text; the payload merges in the pills.
+  // values.preparingFor holds only the "Other" text; the payload merges in the chosen exams.
   const payload: Values = { ...values, preparingFor: combineExams(exams, values.preparingFor) };
 
   // Errors show once a field has been left (or on submit), then update as you type.
@@ -120,7 +121,7 @@ export function EnquiryForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="relative grid gap-8 sm:grid-cols-2">
+    <form onSubmit={onSubmit} noValidate className="relative grid gap-8 [--field-bg:var(--color-linen)] sm:grid-cols-2">
       <div>
         <label htmlFor="enquiry-name" className="block text-caption text-ink-soft">
           Your name
@@ -137,28 +138,18 @@ export function EnquiryForm() {
         <FieldError id="enquiry-phone-error" message={errorFor("phone")} />
       </div>
 
-      <fieldset className="sm:col-span-2">
-        <legend className="text-caption text-ink-soft">
+      <div className="sm:col-span-2">
+        <span id="enquiry-exams-label" className="block text-caption text-ink-soft">
           What are you preparing for? <span className="text-ink-soft/80">(optional, choose any)</span>
-        </legend>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[...EXAMS, OTHER].map((exam) => {
-            const on = exams.includes(exam);
-            return (
-              <label
-                key={exam}
-                className={cn(
-                  "cursor-pointer select-none rounded-full border px-4 py-2.5 text-body leading-none transition-colors duration-300 ease-quiet",
-                  "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-bronze",
-                  on ? "border-ink bg-ink text-paper" : "border-rule text-ink hover:border-ink",
-                )}
-              >
-                <input type="checkbox" checked={on} onChange={() => toggleExam(exam)} className="sr-only" />
-                {exam}
-              </label>
-            );
-          })}
-        </div>
+        </span>
+        <ExamSelect
+          id="enquiry-exams"
+          labelId="enquiry-exams-label"
+          options={[...EXAMS, OTHER]}
+          selected={exams}
+          onToggle={toggleExam}
+          placeholder="Choose one or more"
+        />
         <AnimatePresence initial={false}>
           {exams.includes(OTHER) && (
             <motion.div
@@ -176,7 +167,7 @@ export function EnquiryForm() {
           )}
         </AnimatePresence>
         <FieldError id="enquiry-preparingFor-error" message={errorFor("preparingFor")} />
-      </fieldset>
+      </div>
 
       <div className="sm:col-span-2">
         <label htmlFor="enquiry-reason" className="block text-caption text-ink-soft">

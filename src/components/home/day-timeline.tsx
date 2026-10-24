@@ -46,7 +46,7 @@ export function DayTimeline() {
           <h2 id="day-title" className="font-display text-h2 tracking-[-0.015em]">
             The day, hour by hour
           </h2>
-          <p className="mt-4 max-w-[40ch] text-lead text-ink-soft">From opening at 8 am to closing at 9 pm.</p>
+          <p className="mt-4 max-w-[40ch] text-lead text-ink-soft">Every day, from opening at 8 am to closing at 9 pm.</p>
         </div>
 
         <motion.ol

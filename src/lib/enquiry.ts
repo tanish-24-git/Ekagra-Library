@@ -6,7 +6,7 @@ import { indianMobile, optionalText, personName } from "./fields";
 export const enquirySchema = z.object({
   name: personName,
   phone: indianMobile,
-  preparingFor: optionalText(80, "Keep this under 80 characters"),
+  preparingFor: optionalText(120, "Keep this under 120 characters"),
   reason: optionalText(500, "Keep this under 500 characters"),
 });
 

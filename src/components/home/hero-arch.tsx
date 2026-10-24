@@ -77,7 +77,7 @@ export function HeroArch() {
             </h1>
             <p className="mt-5 max-w-[38ch] text-lead text-ink-soft md:mt-6">
               A peaceful study library for MPSC, UPSC, NEET, JEE and every competitive exam.
-              <span className="hidden sm:inline"> Open {site.hours} in {site.area}, {site.city}.</span>
+              <span className="hidden sm:inline"> Open all 7 days, {site.hours}, in {site.area}, {site.city}.</span>
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-3 md:mt-8">
               <Link href="#enquiry" className={buttonClass("primary")}>
