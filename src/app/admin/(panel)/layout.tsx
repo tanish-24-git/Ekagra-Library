@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { logout } from "@/app/admin/actions";
 import { site } from "@/content/site";
-import { adminHref } from "@/lib/admin-session";
+import { adminHref, adminMode } from "@/lib/admin-session";
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
+  const open = adminMode() === "open";
   const links = [
     { href: adminHref(), label: "Students" },
     { href: adminHref("/students/new"), label: "Add student" },
@@ -26,14 +27,21 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                 {l.label}
               </Link>
             ))}
-            <form action={logout}>
-              <button type="submit" className="text-ink-soft hover:text-ink">
-                Sign out
-              </button>
-            </form>
+            {!open && (
+              <form action={logout}>
+                <button type="submit" className="text-ink-soft hover:text-ink">
+                  Sign out
+                </button>
+              </form>
+            )}
           </nav>
         </div>
       </header>
+      {open && (
+        <p className="border-b border-rule bg-paper px-5 py-2 text-center text-caption text-ink-soft">
+          Development mode: the admin is open at /admin with no login. On the live site it needs ADMIN_PATH and a password (see README).
+        </p>
+      )}
       <main className="mx-auto max-w-[1280px] px-5 py-10 md:px-8 md:py-14">{children}</main>
     </>
   );

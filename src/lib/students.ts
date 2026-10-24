@@ -4,7 +4,8 @@ import { db } from "@/db";
 import { enquiries, memberships, seats, students } from "@/db/schema";
 import type { ExamTarget, Seating } from "@/db/schema";
 import { buildMockEnquiries, buildMockStudents } from "./mock-data";
-import type { CreateStudentInput, EnquiryInput } from "./validation";
+import type { EnquiryInput } from "./enquiry";
+import type { CreateStudentInput } from "./validation";
 
 // Data access for the admin and API routes. Uses Neon through Drizzle when
 // DATABASE_URL is set, otherwise an in-memory store seeded with mock rows.
@@ -28,9 +29,8 @@ export type EnquiryRecord = {
   id: string;
   name: string;
   phone: string;
-  examTarget: ExamTarget | null;
-  seatPreference: Seating | null;
-  message: string | null;
+  preparingFor: string | null;
+  reason: string | null;
   status: "new" | "contacted" | "joined" | "closed";
   createdAt: string;
 };
@@ -56,10 +56,10 @@ function addMonths(isoDate: string, months: number) {
 
 // In-memory store, kept on globalThis so it survives hot reloads in dev.
 type MockStore = { students: StudentRecord[]; enquiries: EnquiryRecord[] };
-const g = globalThis as typeof globalThis & { __ekagraMock?: MockStore };
+const g = globalThis as typeof globalThis & { __ekagraMockV2?: MockStore };
 function mock(): MockStore {
-  g.__ekagraMock ??= { students: buildMockStudents(), enquiries: buildMockEnquiries() };
-  return g.__ekagraMock;
+  g.__ekagraMockV2 ??= { students: buildMockStudents(), enquiries: buildMockEnquiries() };
+  return g.__ekagraMockV2;
 }
 
 export async function listStudents(): Promise<StudentRecord[]> {
@@ -194,9 +194,8 @@ export async function createEnquiry(input: EnquiryInput): Promise<EnquiryRecord>
       id: `mock-enq-${crypto.randomUUID()}`,
       name: input.name,
       phone: input.phone,
-      examTarget: input.examTarget ?? null,
-      seatPreference: input.seatPreference ?? null,
-      message: input.message ?? null,
+      preparingFor: input.preparingFor ?? null,
+      reason: input.reason ?? null,
       status: "new",
       createdAt: new Date().toISOString(),
     };

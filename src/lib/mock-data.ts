@@ -1,4 +1,4 @@
-import type { ExamTarget, Seating } from "@/db/schema";
+import type { ExamTarget } from "@/db/schema";
 import type { EnquiryRecord, StudentRecord } from "./students";
 
 // Seed rows for running the admin without a database. Dates are built
@@ -21,10 +21,10 @@ const seeds: Seed[] = [
   ["Tejas Chavan", "9370012876", "mpsc_combined", "B-09", 9, 1200],
 ];
 
-const enquirySeeds: [string, string, ExamTarget | null, Seating | null, string | null, number][] = [
-  ["Mayur Kale", "9823344556", "mpsc_rajyaseva", "reserved", "Is a desk near a window free?", 0],
-  ["Shruti Ghorpade", "7709123456", "neet", "open", null, 1],
-  ["Ganesh Thorat", "9011223344", "upsc_cse", null, "Can I visit on Sunday?", 3],
+const enquirySeeds: [string, string, string | null, string | null, number][] = [
+  ["Mayur Kale", "9823344556", "MPSC Rajyaseva", "My room is too noisy to study in. I want a desk near a window.", 0],
+  ["Shruti Ghorpade", "7709123456", "NEET 2027", null, 1],
+  ["Ganesh Thorat", "9011223344", null, "Friends recommended it. I’d like to visit first.", 3],
 ];
 
 const isoDay = (offsetDays: number) => {
@@ -49,13 +49,12 @@ export function buildMockStudents(): StudentRecord[] {
 }
 
 export function buildMockEnquiries(): EnquiryRecord[] {
-  return enquirySeeds.map(([name, phone, examTarget, seatPreference, message, daysAgo], i) => ({
+  return enquirySeeds.map(([name, phone, preparingFor, reason, daysAgo], i) => ({
     id: `mock-enq-${i + 1}`,
     name,
     phone,
-    examTarget,
-    seatPreference,
-    message,
+    preparingFor,
+    reason,
     status: "new",
     createdAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
   }));

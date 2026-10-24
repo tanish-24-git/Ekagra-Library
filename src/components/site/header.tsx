@@ -51,8 +51,8 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-          <Link href="/#visit" className={buttonClass("primary", "py-2.5")}>
-            Ask about a seat
+          <Link href="/#enquiry" className={buttonClass("primary", "py-2.5")}>
+            Enquire
           </Link>
         </nav>
 
@@ -88,8 +88,8 @@ export function Header() {
               ))}
             </ul>
             <div className="space-y-4">
-              <Link href="/#visit" onClick={() => setOpen(false)} className={buttonClass("primary", "w-full")}>
-                Ask about a seat
+              <Link href="/#enquiry" onClick={() => setOpen(false)} className={buttonClass("primary", "w-full")}>
+                Send an enquiry
               </Link>
               <a href={site.phoneHref} className="block text-center text-ink-soft">
                 Call {site.phone}

@@ -3,11 +3,11 @@ import { nav, site } from "@/content/site";
 
 export function Footer() {
   return (
-    <footer className="border-t border-rule bg-linen">
+    <footer className="bg-sand">
       <div className="mx-auto max-w-[1440px] px-5 pt-20 pb-10 md:px-10">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <h2 className="text-caption text-ink-soft">Visit</h2>
+            <h2 className="text-caption text-ink/75">Visit</h2>
             <address className="mt-3 not-italic">
               {site.address.map((line) => (
                 <span key={line} className="block">
@@ -21,12 +21,12 @@ export function Footer() {
           </div>
 
           <div className="md:col-span-4">
-            <h2 className="text-caption text-ink-soft">Hours</h2>
+            <h2 className="text-caption text-ink/75">Hours</h2>
             <p className="mt-3">{site.hours}</p>
           </div>
 
           <nav aria-label="Footer" className="md:col-span-4">
-            <h2 className="text-caption text-ink-soft">Pages</h2>
+            <h2 className="text-caption text-ink/75">Pages</h2>
             <ul className="mt-3 space-y-1">
               {nav.map((item) => (
                 <li key={item.href}>
@@ -51,7 +51,7 @@ export function Footer() {
           {site.name}
         </p>
 
-        <div className="mt-8 flex flex-col gap-3 border-t border-rule pt-6 text-caption text-ink-soft md:flex-row md:justify-between">
+        <div className="mt-8 flex flex-col gap-3 border-t border-ink/15 pt-6 text-caption text-ink/75 md:flex-row md:justify-between">
           <span>
             © {site.copyrightYear} {site.fullName}
             <span lang="mr" className="ml-3">

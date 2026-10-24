@@ -7,7 +7,7 @@ import { buttonClass } from "@/components/ui/button";
 import { site } from "@/content/site";
 import { requireAdmin } from "@/lib/admin-guard";
 import { adminHref } from "@/lib/admin-session";
-import { feeStatus, listStudents, seatSummary } from "@/lib/students";
+import { feeStatus, listEnquiries, listStudents, seatSummary } from "@/lib/students";
 
 export default function AdminHome() {
   return (
@@ -28,11 +28,12 @@ export default function AdminHome() {
 async function StudentsOverview() {
   await connection();
   await requireAdmin();
-  const [students, seats] = await Promise.all([listStudents(), seatSummary(site.seats)]);
+  const [students, seats, enquiries] = await Promise.all([listStudents(), seatSummary(site.seats), listEnquiries()]);
   const rows = students.map((s) => ({ ...s, fee: feeStatus(s.endsOn) }));
   const active = rows.filter((r) => r.status === "active").length;
   const due = rows.filter((r) => r.fee.kind === "due").length;
   const overdue = rows.filter((r) => r.fee.kind === "overdue").length;
+  const newEnquiries = enquiries.filter((e) => e.status === "new").length;
 
   const stats = [
     { label: "Active students", value: String(active) },
@@ -40,16 +41,25 @@ async function StudentsOverview() {
     { label: "Sit anywhere", value: String(seats.open) },
     { label: "Fees due this week", value: String(due), tone: due ? "text-due" : undefined },
     { label: "Overdue", value: String(overdue), tone: overdue ? "text-alert" : undefined },
+    { label: "New enquiries", value: String(newEnquiries), href: adminHref("/enquiries") },
   ];
 
   return (
     <>
       <MockNotice />
-      <dl className="mb-12 grid grid-cols-2 border-t border-rule md:grid-cols-5">
+      <dl className="mb-12 grid grid-cols-2 border-t border-rule md:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (
-          <div key={s.label} className="border-b border-rule py-5 pr-4 md:border-b-0 md:border-r md:px-5 md:first:pl-0 md:last:border-r-0">
+          <div key={s.label} className="border-b border-rule py-5 pr-4 lg:border-b-0 lg:border-r lg:px-5 lg:first:pl-0 lg:last:border-r-0">
             <dt className="text-caption text-ink-soft">{s.label}</dt>
-            <dd className={`mt-1 font-display text-h4 tabular-nums ${s.tone ?? ""}`}>{s.value}</dd>
+            <dd className={`mt-1 font-display text-h4 tabular-nums ${s.tone ?? ""}`}>
+              {s.href ? (
+                <Link href={s.href} className="link-quiet">
+                  {s.value}
+                </Link>
+              ) : (
+                s.value
+              )}
+            </dd>
           </div>
         ))}
       </dl>

@@ -5,7 +5,7 @@ import { site } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Gallery",
-  description: `Photos of the reading hall at ${site.fullName}, Yerawada, Pune.`,
+  description: `Photos of the reading hall at ${site.fullName}, ${site.area}, ${site.city}.`,
 };
 
 export default function GalleryPage() {

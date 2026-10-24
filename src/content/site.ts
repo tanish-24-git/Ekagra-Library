@@ -7,10 +7,11 @@ export const site = {
   fullName: "Ekagra Library",
   marathiName: "एकाग्र अभ्यासिका",
   description:
-    "A peaceful study library in Yerawada, Pune for MPSC, UPSC, NEET, JEE and every competitive exam. Open 8 am to 9 pm. Reserve your desk or sit anywhere.",
+    "A peaceful study library in Lohegaon, Pune for MPSC, UPSC, NEET, JEE and every competitive exam. Open 8 am to 9 pm. Reserve your desk or sit anywhere.",
+  area: "Lohegaon",
   city: "Pune",
-  address: ["Kalpak Niwas, near Dream Residency Society", "Near Axis Bank ATM, opposite Samaruddhi Hotel", "Mohanwadi, Yerawada, Pune 411006"],
-  directionsUrl: "https://www.google.com/maps/search/?api=1&query=18.587357,73.898103",
+  address: ["Royal Heights, Sr. No. 285, 3/4", "Porwal Sathe Wasti Road, opposite Gini Bellina", "Kutwal Colony, Lohegaon, Pune 411047"],
+  directionsUrl: "https://www.google.com/maps/search/?api=1&query=18.6019402,73.9125204",
   phone: "+91 70578 89881",
   phoneHref: "tel:+917057889881",
   whatsappHref: "https://wa.me/917057889881",
@@ -58,5 +59,5 @@ export const faqs: { q: string; a: string }[] = [
   { q: "Which exams do students here prepare for?", a: "MPSC, UPSC, NEET, JEE and every other competitive exam." },
   { q: "Is it safe?", a: "The library has CCTV cameras, and separate toilets and bathrooms for men and women." },
   { q: "Is there Wi-Fi and parking?", a: "Yes, both." },
-  { q: "How do I join?", a: `Visit us, call ${site.phone}, or leave your number in the form below and we’ll call you back.` },
+  { q: "How do I join?", a: `Visit us, call ${site.phone}, or send an enquiry using the form below and we’ll call you back.` },
 ];

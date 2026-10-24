@@ -1,9 +1,9 @@
 # Ekagra Library
 
-Website and admin for Ekagra Library (एकाग्र अभ्यासिका), a study library in Yerawada, Pune.
+Website and admin for Ekagra Library (एकाग्र अभ्यासिका), a study library in Lohegaon, Pune.
 
 - **Public site:** homepage, gallery, photo credits.
-- **Admin:** students, fee status, desk reservations, call-back requests. It lives at a secret path behind a password.
+- **Admin:** students, fee status, desk reservations and enquiries from the website form.
 
 Built with Next.js 16 (App Router, Cache Components), React 19, Tailwind CSS v4, Motion and Lenis. Data goes through Drizzle ORM to Neon Postgres.
 
@@ -15,7 +15,7 @@ cp .env.example .env.local   # then fill in the values (see below)
 npm run dev                  # http://localhost:3000
 ```
 
-The admin runs on in-memory sample data until `DATABASE_URL` is set.
+Open the admin at **http://localhost:3000/admin**. In development it opens without a login as long as the three `ADMIN_*` variables are empty. It runs on in-memory sample data until `DATABASE_URL` is set.
 
 ## Environment
 
@@ -33,7 +33,19 @@ To generate the three admin values:
 node -e "const c=require('crypto');console.log('desk-'+c.randomBytes(5).toString('hex'), c.randomBytes(12).toString('base64url'), c.randomBytes(32).toString('hex'))"
 ```
 
+## Opening the admin
+
+| Where | Admin settings | How to open it |
+| --- | --- | --- |
+| Your computer (`npm run dev`) | empty | `http://localhost:3000/admin`, no login |
+| Your computer or the live site | all three set | `https://your-site/<ADMIN_PATH>`, then sign in with `ADMIN_PASSWORD` |
+| Live site (`npm run build && npm start`, or any host) | empty | Admin is switched off: every admin URL answers 404 |
+
+For the live site: set the three `ADMIN_*` variables in your host's environment settings, deploy, then open `https://your-site/<ADMIN_PATH>` and bookmark it. Nothing on the public site links to it.
+
 ## How the admin stays hidden
+
+When the admin settings are present:
 
 - `/admin` always answers 404, signed in or not. The admin is served only from `ADMIN_PATH`.
 - Every admin page needs a login. Sessions are HMAC-signed, httpOnly, SameSite=Strict cookies that last 12 hours.
@@ -42,7 +54,7 @@ node -e "const c=require('crypto');console.log('desk-'+c.randomBytes(5).toString
 - Admin responses send `X-Robots-Tag: noindex`. `robots.txt` deliberately doesn't mention the admin, because that would advertise it.
 - The proxy (`src/proxy.ts`) does these checks, and each admin page, action and API handler repeats them.
 
-Changing `ADMIN_PATH` needs a rebuild, because the admin's links are rendered at build time. If any of the three admin variables is missing, the admin is switched off.
+Changing `ADMIN_PATH` needs a rebuild, because the admin's links are rendered at build time.
 
 ## Database
 

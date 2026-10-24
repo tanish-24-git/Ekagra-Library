@@ -77,11 +77,11 @@ export function HeroArch() {
             </h1>
             <p className="mt-5 max-w-[38ch] text-lead text-ink-soft md:mt-6">
               A peaceful study library for MPSC, UPSC, NEET, JEE and every competitive exam.
-              <span className="hidden sm:inline"> Open {site.hours} in Yerawada, Pune.</span>
+              <span className="hidden sm:inline"> Open {site.hours} in {site.area}, {site.city}.</span>
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-3 md:mt-8">
-              <Link href="#visit" className={buttonClass("primary")}>
-                Ask about a seat
+              <Link href="#enquiry" className={buttonClass("primary")}>
+                Send an enquiry
               </Link>
               <Link href="#facilities" className="link-quiet">
                 See the facilities

@@ -10,7 +10,7 @@ export function Visit() {
             Visit the library
           </h2>
           <p className="mt-5 max-w-[32ch] text-lead text-ink-soft">
-            Come and see the hall, or leave your number and we’ll call you back.
+            Come and see the hall, or send an enquiry and we’ll call you back.
           </p>
 
           <dl className="mt-12 space-y-7">
@@ -47,7 +47,9 @@ export function Visit() {
           </dl>
         </div>
 
-        <div className="md:col-span-7 md:col-start-6 md:pt-3">
+        <div id="enquiry" className="scroll-mt-28 md:col-span-7 md:col-start-6 md:pt-3">
+          <h3 className="font-display text-h3">Send an enquiry</h3>
+          <p className="mt-3 mb-10 max-w-[44ch] text-ink-soft">Tell us a little about yourself. Only your name and number are required.</p>
           <EnquiryForm />
         </div>
       </div>

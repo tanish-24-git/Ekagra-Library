@@ -1,4 +1,5 @@
 import { Footer } from "@/components/site/footer";
+import { FooterReveal } from "@/components/site/footer-reveal";
 import { Header } from "@/components/site/header";
 import { SmoothScroll } from "@/components/site/smooth-scroll";
 
@@ -11,8 +12,14 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
       </a>
       <SmoothScroll />
       <Header />
-      <main id="main">{children}</main>
-      <Footer />
+      {/* The page is a card that lifts off the footer (see FooterReveal). overflow-clip, unlike
+          overflow-hidden, keeps position: sticky working for the sections inside. */}
+      <main id="main" className="relative z-10 bg-paper md:overflow-clip md:rounded-b-[2.5rem] md:shadow-[0_40px_80px_-40px_rgba(59,49,43,0.45)]">
+        {children}
+      </main>
+      <FooterReveal>
+        <Footer />
+      </FooterReveal>
       <div className="grain" aria-hidden />
     </>
   );

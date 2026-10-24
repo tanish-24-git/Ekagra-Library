@@ -1,16 +1,27 @@
-// Admin sessions: a signed, expiring token in an httpOnly cookie.
-// Uses Web Crypto so it works in the proxy as well as in server code.
+// Admin access and sessions. Uses Web Crypto so it works in the proxy as
+// well as in server code.
 
 export const SESSION_COOKIE = "ek_session";
 export const SESSION_HOURS = 12;
 
-// The admin lives at a secret path (ADMIN_PATH) instead of /admin.
-// Without ADMIN_PATH, ADMIN_PASSWORD and ADMIN_SESSION_SECRET the admin is
-// switched off and every admin URL answers 404.
+// How the admin is reached:
+//  - "open":   development with no admin settings. /admin works, no login.
+//  - "hidden": ADMIN_PATH, ADMIN_PASSWORD and ADMIN_SESSION_SECRET are set.
+//              The admin lives at /<ADMIN_PATH> behind a login; /admin is a 404.
+//  - "off":    production without those settings. Every admin URL is a 404.
+export type AdminMode = "open" | "hidden" | "off";
+
+export function adminMode(): AdminMode {
+  const configured = !!(process.env.ADMIN_PATH?.replace(/\//g, "") && process.env.ADMIN_PASSWORD && process.env.ADMIN_SESSION_SECRET);
+  if (configured) return "hidden";
+  return process.env.NODE_ENV === "production" ? "off" : "open";
+}
+
 export function adminSlug(): string | null {
-  const slug = (process.env.ADMIN_PATH ?? "").replace(/^\/+|\/+$/g, "");
-  if (!slug || !process.env.ADMIN_PASSWORD || !process.env.ADMIN_SESSION_SECRET) return null;
-  return slug;
+  const mode = adminMode();
+  if (mode === "off") return null;
+  if (mode === "open") return "admin";
+  return (process.env.ADMIN_PATH ?? "").replace(/^\/+|\/+$/g, "");
 }
 
 export const adminHref = (path = "") => `/${adminSlug()}${path}`;

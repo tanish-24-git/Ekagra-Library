@@ -93,9 +93,8 @@ export const enquiries = pgTable("enquiries", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
-  examTarget: examTargetEnum("exam_target"),
-  seatPreference: seatingEnum("seat_preference"),
-  message: text("message"),
+  preparingFor: text("preparing_for"),
+  reason: text("reason"),
   status: enquiryStatusEnum("status").default("new").notNull(),
   ...timestamps,
 });
