@@ -1,4 +1,5 @@
 "use client";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { z } from "zod";
 import { buttonClass } from "@/components/ui/button";
@@ -10,7 +11,8 @@ type Errors = Partial<Record<EnquiryField, string>>;
 
 const EMPTY: Values = { name: "", phone: "", preparingFor: "", reason: "" };
 const ORDER: EnquiryField[] = ["name", "phone", "preparingFor", "reason"];
-const SUGGESTIONS = ["MPSC", "UPSC", "NEET", "JEE", "Banking", "SSC", "Police Bharti", "College exams"];
+const EXAMS = ["MPSC", "UPSC", "NEET", "JEE", "Banking", "SSC", "Police Bharti"];
+const OTHER = "Other";
 const REASON_MAX = 500;
 
 function check(values: Values): Errors {
@@ -19,6 +21,10 @@ function check(values: Values): Errors {
   const fields = z.flattenError(result.error).fieldErrors as Partial<Record<EnquiryField, string[]>>;
   return Object.fromEntries(ORDER.filter((k) => fields[k]?.length).map((k) => [k, fields[k]![0]]));
 }
+
+// Chosen pills plus the "Other" text, e.g. "MPSC, UPSC, CA Foundation".
+const combineExams = (chosen: string[], other: string) =>
+  [...chosen.filter((e) => e !== OTHER), chosen.includes(OTHER) ? other.trim() : ""].filter(Boolean).join(", ");
 
 const formatPhone = (raw: string) => {
   const digits = raw.replace(/\D/g, "").slice(-10);
@@ -34,9 +40,13 @@ export function EnquiryForm() {
   const [serverErrors, setServerErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [sent, setSent] = useState<{ name: string; phone: string } | null>(null);
+  const [exams, setExams] = useState<string[]>([]);
+
+  // values.preparingFor holds only the "Other" text; the payload merges in the pills.
+  const payload: Values = { ...values, preparingFor: combineExams(exams, values.preparingFor) };
 
   // Errors show once a field has been left (or on submit), then update as you type.
-  const errors = check(values);
+  const errors = check(payload);
   const errorFor = (k: EnquiryField) => (touched[k] ? errors[k] : undefined) ?? serverErrors[k];
 
   const field = (k: EnquiryField) => ({
@@ -52,6 +62,12 @@ export function EnquiryForm() {
     "aria-describedby": errorFor(k) ? `enquiry-${k}-error` : undefined,
   });
 
+  const toggleExam = (exam: string) => {
+    const adding = !exams.includes(exam);
+    setExams((list) => (adding ? [...list, exam] : list.filter((e) => e !== exam)));
+    if (adding && exam === OTHER) setTimeout(() => document.getElementById("enquiry-preparingFor")?.focus(), 80);
+  };
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setTouched({ name: true, phone: true, preparingFor: true, reason: true });
@@ -66,7 +82,7 @@ export function EnquiryForm() {
     const res = await fetch("/api/enquiries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, company }),
+      body: JSON.stringify({ ...payload, company }),
     }).catch(() => null);
 
     if (res?.ok) {
@@ -92,6 +108,7 @@ export function EnquiryForm() {
           onClick={() => {
             setSent(null);
             setValues(EMPTY);
+            setExams([]);
             setTouched({});
           }}
           className="link-quiet mt-6"
@@ -120,18 +137,46 @@ export function EnquiryForm() {
         <FieldError id="enquiry-phone-error" message={errorFor("phone")} />
       </div>
 
-      <div className="sm:col-span-2">
-        <label htmlFor="enquiry-preparingFor" className="block text-caption text-ink-soft">
-          What are you preparing for? <span className="text-ink-soft/80">(optional)</span>
-        </label>
-        <input {...field("preparingFor")} list="enquiry-exams" maxLength={80} placeholder="MPSC, UPSC, NEET, JEE or anything else" className={fieldClass} />
-        <datalist id="enquiry-exams">
-          {SUGGESTIONS.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
+      <fieldset className="sm:col-span-2">
+        <legend className="text-caption text-ink-soft">
+          What are you preparing for? <span className="text-ink-soft/80">(optional, choose any)</span>
+        </legend>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {[...EXAMS, OTHER].map((exam) => {
+            const on = exams.includes(exam);
+            return (
+              <label
+                key={exam}
+                className={cn(
+                  "cursor-pointer select-none rounded-full border px-4 py-2.5 text-body leading-none transition-colors duration-300 ease-quiet",
+                  "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-bronze",
+                  on ? "border-ink bg-ink text-paper" : "border-rule text-ink hover:border-ink",
+                )}
+              >
+                <input type="checkbox" checked={on} onChange={() => toggleExam(exam)} className="sr-only" />
+                {exam}
+              </label>
+            );
+          })}
+        </div>
+        <AnimatePresence initial={false}>
+          {exams.includes(OTHER) && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <label htmlFor="enquiry-preparingFor" className="mt-6 block text-caption text-ink-soft">
+                Which exam?
+              </label>
+              <input {...field("preparingFor")} maxLength={60} placeholder="For example: CA Foundation, TET or college exams" className={fieldClass} />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <FieldError id="enquiry-preparingFor-error" message={errorFor("preparingFor")} />
-      </div>
+      </fieldset>
 
       <div className="sm:col-span-2">
         <label htmlFor="enquiry-reason" className="block text-caption text-ink-soft">
