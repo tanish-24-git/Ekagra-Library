@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@import "lenis/dist/lenis.css";
+
+@theme {
+  /* Light and warm: ivory paper, beige linen, sand, soft rosewood ink. */
+  --color-paper: #f8f5ef;
+  --color-linen: #f0eae0;
+  --color-sand: #e3d9c9;
+  --color-taupe: #a08d72;
+  --color-bronze: #7a5c3b;
+  --color-ink: #3b312b;
+  --color-ink-soft: #6e6359;
+  --color-rule: #dcd2c2;
+
+  --ease-quiet: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Type scale after Bringhurst: 15 18 21 28 36 48 64 88 (Mukta sets small) */
+  --text-caption: 0.9375rem;
+  --text-caption--line-height: 1.45;
+  --text-body: 1.125rem;
+  --text-body--line-height: 1.6;
+  --text-lead: 1.3125rem;
+  --text-lead--line-height: 1.55;
+  --text-h4: 1.75rem;
+  --text-h4--line-height: 1.25;
+  --text-h3: 2.25rem;
+  --text-h3--line-height: 1.15;
+  --text-h2: clamp(2.5rem, 1.6rem + 3vw, 4rem);
+  --text-h2--line-height: 1.05;
+  --text-h1: clamp(3rem, 1.4rem + 5.6vw, 5.5rem);
+  --text-h1--line-height: 0.98;
+}
+
+@theme inline {
+  --font-display: var(--font-tiro), "Tiro Devanagari Marathi", Georgia, serif;
+  --font-sans: var(--font-mukta), "Mukta", system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  font-feature-settings: "kern", "liga";
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-bronze);
+  outline-offset: 3px;
+}
+
+/* Paper grain over the public site. Static, never animated. */
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.23  0 0 0 0 0.19  0 0 0 0 0.17  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* The arch: a semicircular top on whatever box it's applied to. */
+.arch {
+  border-radius: 999px 999px 0 0;
+  overflow: hidden;
+}
+
+.link-quiet {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  transition: text-decoration-color 0.3s var(--ease-quiet);
+}
+.link-quiet:hover {
+  text-decoration-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hero: a photo clipped to an arched window that opens to full bleed.
+   --p (0 to 1) is driven by scroll progress from the HeroArch component. */
+.hero-arch {
+  --p: 0;
+  /* Phones: the arch sits below the intro text. */
+  --top: max(64svh, 470px);
+  --left: 9vw;
+  --right: 9vw;
+  --r: 41vw;
+  --k: calc(1 - var(--p));
+  clip-path: inset(
+    calc(var(--top) * var(--k)) calc(var(--right) * var(--k)) 0 calc(var(--left) * var(--k))
+      round calc(var(--r) * var(--k)) calc(var(--r) * var(--k)) 0 0
+  );
+}
+@media (min-width: 768px) {
+  .hero-arch {
+    --top: 13svh;
+    --left: 53vw;
+    --right: 7vw;
+    --r: 20vw;
+  }
+}
+
+/* Admin status colours (all at least 4.5:1 on paper). */
+@theme {
+  --color-ok: #4f6b4a;
+  --color-due: #85661c;
+  --color-alert: #9b3d2e;
+}
