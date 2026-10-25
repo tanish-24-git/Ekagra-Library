@@ -54,7 +54,7 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
           Fees
           <select value={fee} onChange={(e) => setFee(e.target.value as FeeFilter)} className={inputClass}>
             <option value="all">All</option>
-            <option value="due">Due this week</option>
+            <option value="due">Due in 10 days</option>
             <option value="overdue">Overdue</option>
           </select>
         </label>

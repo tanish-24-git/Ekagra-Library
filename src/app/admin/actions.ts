@@ -1,4 +1,5 @@
 "use server";
+import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -7,8 +8,10 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { adminEmails, adminHref } from "@/lib/admin-session";
 import { auth } from "@/lib/auth";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "@/lib/documents";
-import { createStudent, revealIdNumber, type NewDocument } from "@/lib/students";
-import { createStudentSchema } from "@/lib/validation";
+import { formatShortDate } from "@/lib/labels";
+import { runReminders, type ReminderRun } from "@/lib/reminders";
+import { createStudent, renewStudent, revealIdNumber, type NewDocument } from "@/lib/students";
+import { createStudentSchema, renewSchema } from "@/lib/validation";
 
 // Wrong sign-ins: five tries per IP, then a 15-minute lockout. Kept in
 // memory, so it resets on restart and isn't shared between server instances.
@@ -114,4 +117,22 @@ export async function addStudent(_prev: AddStudentState, formData: FormData): Pr
 export async function revealNumber(studentId: string, kind: Extract<DocumentKind, "aadhaar" | "pan">): Promise<string | null> {
   await requireAdmin();
   return revealIdNumber(studentId, kind);
+}
+
+export type RenewState = { message?: string; error?: string; fields?: Record<string, string[] | undefined> };
+
+// Records a renewal payment and extends the membership (bound to a student id).
+export async function renewMembership(studentId: string, _prev: RenewState, formData: FormData): Promise<RenewState> {
+  await requireAdmin();
+  const parsed = renewSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Check the highlighted fields.", fields: z.flattenError(parsed.error).fieldErrors };
+  const student = await renewStudent(studentId, parsed.data);
+  if (!student?.endsOn) return { error: "Couldn’t find this student. Reload the page and try again." };
+  refresh();
+  return { message: `Renewed. The membership now runs until ${formatShortDate(student.endsOn)}.` };
+}
+
+export async function sendRemindersNow(): Promise<ReminderRun> {
+  await requireAdmin();
+  return runReminders();
 }

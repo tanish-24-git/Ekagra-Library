@@ -28,6 +28,9 @@ Open the admin at **http://localhost:3000/admin**. In development it opens witho
 | `ADMIN_EMAILS` | Who may sign in to the admin, comma-separated, e.g. `owner@gmail.com,helper@gmail.com`. |
 | `ADMIN_PATH` | Optional secret address of the admin, e.g. `desk-7fq2k9` serves it at `/desk-7fq2k9` and makes `/admin` a 404. |
 | `DOCUMENTS_KEY` | 64 hex characters that encrypt ID numbers and documents. Keep a backup: without it they can't be read. |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Gmail address and App Password that send fee reminders. Empty means dry runs only. |
+| `OWNER_EMAIL` | Where your daily list of due fees goes. Defaults to `GMAIL_USER`. |
+| `CRON_SECRET` | Bearer token the daily scheduler sends to `/api/cron/reminders`. |
 
 To generate a cookie secret, a documents key and a secret path:
 
@@ -80,9 +83,19 @@ The Add student form takes the Aadhaar and PAN numbers and photos or PDFs of the
 - The student page shows numbers masked until you choose Show full number. Files are served only to a signed-in admin, never cached.
 - The form asks you to confirm the student agreed to share their ID.
 
+## Fees and reminders
+
+- Students pay when they join (Add student records the payment and how it was paid). Each membership runs for the months paid.
+- A membership is **due** 10 days before it ends (`REMIND_DAYS_BEFORE` in `src/lib/students.ts`).
+- The admin's **Fees due** list shows due and overdue students, each with **Send on WhatsApp** (opens WhatsApp with the message typed; you tap Send) and **Renew**.
+- **Renew** on the student page records the payment and adds the months. The new period starts when the current one ends, or today if it has already ended.
+- Every morning at 9:00 IST the scheduler calls `/api/cron/reminders`: you get one email listing who is due, and each due student with an email address gets their own. Each goes out once per membership (`reminders` table). Without Gmail settings the run is a dry run. **Send email reminders now** in the admin does the same on demand.
+
+Scheduling: `vercel.json` sets this up on Vercel (set `CRON_SECRET` there and Vercel sends it). On any other host, create a free job at cron-job.org for `https://your-site/api/cron/reminders` at 03:30 UTC with the header `Authorization: Bearer <CRON_SECRET>`.
+
 ## Database
 
-The schema is in `src/db/schema.ts` (students, memberships, seats, payments, enquiries, student documents).
+The schema is in `src/db/schema.ts` (students, memberships, seats, payments, enquiries, student documents, reminders).
 
 ```bash
 npm run db:push       # create or update tables in Neon from the schema

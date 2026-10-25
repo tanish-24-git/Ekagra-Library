@@ -1,12 +1,12 @@
 import "server-only";
-import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { enquiries, memberships, seats, studentDocuments, students } from "@/db/schema";
-import type { DocumentKind, ExamTarget, Seating } from "@/db/schema";
+import { enquiries, memberships, payments, reminders, seats, studentDocuments, students } from "@/db/schema";
+import type { DocumentKind, ExamTarget, PaymentMode, ReminderKind, Seating } from "@/db/schema";
 import { open, openText, seal, sealText } from "./crypto-box";
 import { buildMockEnquiries, buildMockStudents } from "./mock-data";
 import type { EnquiryInput } from "./enquiry";
-import type { CreateStudentInput } from "./validation";
+import type { CreateStudentInput, RenewInput } from "./validation";
 
 // Data access for the admin and API routes. Uses Neon through Drizzle when
 // DATABASE_URL is set, otherwise an in-memory store seeded with mock rows.
@@ -28,7 +28,12 @@ export type StudentRecord = {
   panLast4: string | null;
   // Which ID documents have been uploaded.
   documents: DocumentKind[];
+  email: string | null;
+  // The latest membership, which reminders and renewals refer to.
+  membershipId: string | null;
 };
+
+export type PaymentRecord = { id: string; amountInr: number; mode: PaymentMode; paidOn: string };
 
 export type NewDocument = { kind: DocumentKind; contentType: string; bytes: Buffer };
 
@@ -44,6 +49,9 @@ export type EnquiryRecord = {
 
 export type FeeStatus = { kind: "paid" | "due" | "overdue" | "none"; days: number };
 
+// A membership counts as due this many days before it ends. Reminders go out then.
+export const REMIND_DAYS_BEFORE = 10;
+
 const DAY = 86_400_000;
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -51,11 +59,11 @@ export function feeStatus(endsOn: string | null, today = todayIso()): FeeStatus 
   if (!endsOn) return { kind: "none", days: 0 };
   const days = Math.round((Date.parse(endsOn) - Date.parse(today)) / DAY);
   if (days < 0) return { kind: "overdue", days: -days };
-  if (days <= 7) return { kind: "due", days };
+  if (days <= REMIND_DAYS_BEFORE) return { kind: "due", days };
   return { kind: "paid", days };
 }
 
-function addMonths(isoDate: string, months: number) {
+export function addMonths(isoDate: string, months: number) {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCMonth(d.getUTCMonth() + months);
   return d.toISOString().slice(0, 10);
@@ -69,14 +77,23 @@ type MockStore = {
   enquiries: EnquiryRecord[];
   idNumbers: Record<string, { aadhaar?: string; pan?: string }>;
   documents: MockDocument[];
+  payments: (PaymentRecord & { studentId: string })[];
+  reminders: { membershipId: string; kind: ReminderKind }[];
 };
-const g = globalThis as typeof globalThis & { __ekagraMockV3?: MockStore };
+const g = globalThis as typeof globalThis & { __ekagraMockV4?: MockStore };
 function mock(): MockStore {
-  g.__ekagraMockV3 ??= { students: buildMockStudents(), enquiries: buildMockEnquiries(), idNumbers: {}, documents: [] };
-  return g.__ekagraMockV3;
+  g.__ekagraMockV4 ??= {
+    students: buildMockStudents(),
+    enquiries: buildMockEnquiries(),
+    idNumbers: {},
+    documents: [],
+    payments: [],
+    reminders: [],
+  };
+  return g.__ekagraMockV4;
 }
 
-export async function listStudents(): Promise<StudentRecord[]> {
+export async function listStudents(where?: SQL): Promise<StudentRecord[]> {
   if (!db) return [...mock().students];
 
   // One row per student, joined with their most recent membership.
@@ -88,10 +105,12 @@ export async function listStudents(): Promise<StudentRecord[]> {
         seatNumber: seats.number,
         endsOn: memberships.endsOn,
         feeInr: memberships.feeInr,
+        membershipId: memberships.id,
       })
       .from(students)
       .leftJoin(memberships, eq(memberships.studentId, students.id))
       .leftJoin(seats, eq(seats.id, memberships.seatId))
+      .where(where)
       .orderBy(students.id, desc(memberships.endsOn)),
     db.select({ studentId: studentDocuments.studentId, kind: studentDocuments.kind }).from(studentDocuments),
   ]);
@@ -110,12 +129,18 @@ export async function listStudents(): Promise<StudentRecord[]> {
     aadhaarLast4: r.aadhaarLast4,
     panLast4: r.panLast4,
     documents: uploaded.filter((d) => d.studentId === r.id).map((d) => d.kind),
+    email: r.email,
+    membershipId: r.membershipId,
   }));
 }
 
+const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 export async function getStudent(id: string): Promise<StudentRecord | null> {
-  const all = await listStudents();
-  return all.find((s) => s.id === id) ?? null;
+  if (!db) return mock().students.find((s) => s.id === id) ?? null;
+  if (!isUuid(id)) return null;
+  const [student] = await listStudents(eq(students.id, id));
+  return student ?? null;
 }
 
 export async function createStudent(input: CreateStudentInput, documents: NewDocument[] = []): Promise<StudentRecord> {
@@ -144,15 +169,19 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
       aadhaarLast4: idNumbers.aadhaarLast4,
       panLast4: idNumbers.panLast4,
       documents: documents.map((d) => d.kind),
+      email: input.email ?? null,
+      membershipId: `mock-m-${crypto.randomUUID()}`,
     };
     const store = mock();
     store.students.unshift(record);
+    store.payments.push({ id: crypto.randomUUID(), studentId: record.id, amountInr: input.feeInr * input.months, mode: input.paymentMode, paidOn: startsOn });
     store.idNumbers[record.id] = { aadhaar: idNumbers.aadhaarEnc ?? undefined, pan: idNumbers.panEnc ?? undefined };
     store.documents.push(...documents.map((d) => ({ studentId: record.id, kind: d.kind, contentType: d.contentType, data: seal(d.bytes) })));
     return record;
   }
 
   const studentId = crypto.randomUUID();
+  const membershipId = crypto.randomUUID();
   const insertStudent = db.insert(students).values({
     id: studentId,
     fullName: input.fullName,
@@ -169,6 +198,7 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
   // Reserved desks are created on first use, so seat numbers don't need seeding.
   const insertSeat = seatNumber ? [db.insert(seats).values({ number: seatNumber }).onConflictDoNothing()] : [];
   const insertMembership = db.insert(memberships).values({
+    id: membershipId,
     studentId,
     seatId: seatNumber ? sql`(select ${seats.id} from ${seats} where ${seats.number} = ${seatNumber})` : null,
     seating: input.seating,
@@ -184,8 +214,13 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
       ]
     : [];
 
+  // The joining payment covers every month paid for up front.
+  const insertPayment = db
+    .insert(payments)
+    .values({ studentId, membershipId, amountInr: input.feeInr * input.months, mode: input.paymentMode, paidOn: startsOn });
+
   // One HTTP round trip to Neon, run as a single transaction.
-  await db.batch([insertStudent, ...insertSeat, insertMembership, ...insertDocuments]);
+  await db.batch([insertStudent, ...insertSeat, insertMembership, insertPayment, ...insertDocuments]);
 
   return {
     id: studentId,
@@ -201,7 +236,72 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
     aadhaarLast4: idNumbers.aadhaarLast4,
     panLast4: idNumbers.panLast4,
     documents: documents.map((d) => d.kind),
+    email: input.email ?? null,
+    membershipId,
   };
+}
+
+// Records a payment and adds a new membership period. It starts where the
+// current one ends, or today if that has already passed.
+export async function renewStudent(studentId: string, input: RenewInput): Promise<StudentRecord | null> {
+  const current = await getStudent(studentId);
+  if (!current) return null;
+  const today = todayIso();
+  const startsOn = current.endsOn && current.endsOn > today ? current.endsOn : today;
+  const endsOn = addMonths(startsOn, input.months);
+  const monthlyFee = current.feeInr ?? Math.round(input.amountInr / input.months);
+
+  if (!db) {
+    const membershipId = `mock-m-${crypto.randomUUID()}`;
+    Object.assign(current, { endsOn, membershipId, status: "active", feeInr: monthlyFee });
+    mock().payments.push({ id: crypto.randomUUID(), studentId, amountInr: input.amountInr, mode: input.mode, paidOn: today });
+    return current;
+  }
+
+  const membershipId = crypto.randomUUID();
+  await db.batch([
+    db.insert(memberships).values({
+      id: membershipId,
+      studentId,
+      seatId: current.seatNumber ? sql`(select ${seats.id} from ${seats} where ${seats.number} = ${current.seatNumber})` : null,
+      seating: current.seating ?? "open",
+      startsOn,
+      endsOn,
+      feeInr: monthlyFee,
+    }),
+    db.insert(payments).values({ studentId, membershipId, amountInr: input.amountInr, mode: input.mode, paidOn: today }),
+    db.update(students).set({ status: "active" }).where(eq(students.id, studentId)),
+  ]);
+  return { ...current, endsOn, membershipId, status: "active", feeInr: monthlyFee };
+}
+
+export async function listPayments(studentId: string): Promise<PaymentRecord[]> {
+  if (!db) return mock().payments.filter((p) => p.studentId === studentId).reverse();
+  if (!isUuid(studentId)) return [];
+  return db
+    .select({ id: payments.id, amountInr: payments.amountInr, mode: payments.mode, paidOn: payments.paidOn })
+    .from(payments)
+    .where(eq(payments.studentId, studentId))
+    .orderBy(desc(payments.paidOn), desc(payments.createdAt));
+}
+
+// Which reminders have already gone out for these memberships.
+export async function sentReminders(membershipIds: string[]): Promise<{ membershipId: string; kind: ReminderKind }[]> {
+  if (!membershipIds.length) return [];
+  if (!db) return mock().reminders.filter((r) => membershipIds.includes(r.membershipId));
+  return db
+    .select({ membershipId: reminders.membershipId, kind: reminders.kind })
+    .from(reminders)
+    .where(inArray(reminders.membershipId, membershipIds));
+}
+
+export async function logReminders(rows: { membershipId: string; kind: ReminderKind; sentTo: string }[]) {
+  if (!rows.length) return;
+  if (!db) {
+    mock().reminders.push(...rows.map(({ membershipId, kind }) => ({ membershipId, kind })));
+    return;
+  }
+  await db.insert(reminders).values(rows).onConflictDoNothing();
 }
 
 export async function updateStudent(

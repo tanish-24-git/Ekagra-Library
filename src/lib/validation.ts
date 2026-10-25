@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { examTargetEnum, seatingEnum } from "@/db/schema";
+import { examTargetEnum, paymentModeEnum, seatingEnum } from "@/db/schema";
 import { indianMobile, optionalText, personName } from "./fields";
 import { aadhaarField, panField } from "./id-numbers";
 
@@ -15,6 +15,7 @@ export const createStudentSchema = z
     seatNumber: optionalText(10, "Desk numbers are at most 10 characters"),
     months: z.coerce.number().int().min(1).max(12).default(1),
     feeInr: z.coerce.number().int().min(0, "Fee can’t be negative"),
+    paymentMode: z.enum(paymentModeEnum.enumValues).default("cash"),
     emergencyName: optionalText(60, "Keep the name under 60 characters"),
     emergencyPhone: z.union([z.literal(""), indianMobile]).optional().transform((v) => v || undefined),
     notes: note,
@@ -27,6 +28,14 @@ export const createStudentSchema = z
   });
 
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
+
+// Renewing: how many months were paid for, how much, and how.
+export const renewSchema = z.object({
+  months: z.coerce.number().int().min(1, "At least 1 month").max(12, "At most 12 months"),
+  amountInr: z.coerce.number().int().min(0, "Amount can’t be negative"),
+  mode: z.enum(paymentModeEnum.enumValues),
+});
+export type RenewInput = z.infer<typeof renewSchema>;
 
 export const updateStudentSchema = z.object({
   fullName: personName.optional(),

@@ -37,6 +37,8 @@ export const examTargetEnum = pgEnum("exam_target", [
 export const paymentModeEnum = pgEnum("payment_mode", ["cash", "upi", "card", "bank_transfer"]);
 export const enquiryStatusEnum = pgEnum("enquiry_status", ["new", "contacted", "joined", "closed"]);
 export const documentKindEnum = pgEnum("document_kind", ["aadhaar", "pan", "driving_licence"]);
+// Who a fee reminder went to: the owner's daily list, or the student by email.
+export const reminderKindEnum = pgEnum("reminder_kind", ["owner", "student_email"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -129,6 +131,21 @@ export const studentDocuments = pgTable(
   (t) => [uniqueIndex("student_documents_student_kind").on(t.studentId, t.kind)],
 );
 
+// One row per reminder sent, so each membership is reminded once per kind.
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    membershipId: uuid("membership_id")
+      .notNull()
+      .references(() => memberships.id, { onDelete: "cascade" }),
+    kind: reminderKindEnum("kind").notNull(),
+    sentTo: text("sent_to"),
+    sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("reminders_membership_kind").on(t.membershipId, t.kind)],
+);
+
 export const studentsRelations = relations(students, ({ many }) => ({
   memberships: many(memberships),
   payments: many(payments),
@@ -157,3 +174,5 @@ export type Enquiry = typeof enquiries.$inferSelect;
 export type Seating = (typeof seatingEnum.enumValues)[number];
 export type ExamTarget = (typeof examTargetEnum.enumValues)[number];
 export type DocumentKind = (typeof documentKindEnum.enumValues)[number];
+export type PaymentMode = (typeof paymentModeEnum.enumValues)[number];
+export type ReminderKind = (typeof reminderKindEnum.enumValues)[number];

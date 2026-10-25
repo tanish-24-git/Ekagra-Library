@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { DueList } from "@/components/admin/due-list";
 import { MockNotice } from "@/components/admin/mock-notice";
 import { StudentsTable } from "@/components/admin/students-table";
 import { buttonClass } from "@/components/ui/button";
 import { site } from "@/content/site";
 import { requireAdmin } from "@/lib/admin-guard";
 import { adminHref } from "@/lib/admin-session";
-import { feeStatus, listEnquiries, listStudents, seatSummary } from "@/lib/students";
+import { REMIND_DAYS_BEFORE, feeStatus, listEnquiries, listStudents, seatSummary } from "@/lib/students";
 
 export default function AdminHome() {
   return (
@@ -40,7 +41,7 @@ async function StudentsOverview() {
     { label: "Active students", value: String(active) },
     { label: "Reserved desks", value: `${seats.reserved} / ${seats.totalSeats}` },
     { label: "Sit anywhere", value: String(seats.open) },
-    { label: "Fees due this week", value: String(due), tone: due ? "text-due" : undefined },
+    { label: `Due in ${REMIND_DAYS_BEFORE} days`, value: String(due), tone: due ? "text-due" : undefined },
     { label: "Overdue", value: String(overdue), tone: overdue ? "text-alert" : undefined },
     { label: "New enquiries", value: String(newEnquiries), href: adminHref("/enquiries") },
   ];
@@ -64,6 +65,7 @@ async function StudentsOverview() {
           </div>
         ))}
       </dl>
+      <DueList rows={rows} today={new Date().toISOString().slice(0, 10)} />
       <StudentsTable rows={rows} />
     </>
   );

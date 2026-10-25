@@ -4,7 +4,7 @@ import { addStudent, type AddStudentState } from "@/app/admin/actions";
 import { buttonClass } from "@/components/ui/button";
 import type { DocumentKind } from "@/db/schema";
 import { DOCUMENT_KINDS, documentLabels } from "@/lib/documents";
-import { examLabels, seatingLabels } from "@/lib/labels";
+import { examLabels, paymentModeLabels, seatingLabels } from "@/lib/labels";
 import { DocumentInput } from "./document-input";
 import { AadhaarInput, PanInput } from "./id-number-inputs";
 
@@ -38,7 +38,7 @@ export function AddStudentForm() {
         <Field error={err("phone")} label="Mobile number">
           <input name="phone" type="tel" required defaultValue={v.phone} aria-invalid={!!err("phone")} className={inputClass} />
         </Field>
-        <Field error={err("email")} label="Email (optional)">
+        <Field error={err("email")} label="Email (optional, for fee reminders)">
           <input name="email" type="email" defaultValue={v.email} aria-invalid={!!err("email")} className={inputClass} />
         </Field>
         <Field error={err("examTarget")} label="Preparing for">
@@ -68,6 +68,15 @@ export function AddStudentForm() {
         </Field>
         <Field error={err("months")} label="Months paid">
           <input name="months" type="number" min={1} max={12} defaultValue={v.months ?? "1"} aria-invalid={!!err("months")} className={inputClass} />
+        </Field>
+        <Field error={err("paymentMode")} label="Paid by">
+          <select name="paymentMode" defaultValue={v.paymentMode ?? "cash"} className={inputClass}>
+            {Object.entries(paymentModeLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field error={err("feeInr")} label="Monthly fee (₹)">
           <input name="feeInr" type="number" min={0} required defaultValue={v.feeInr} aria-invalid={!!err("feeInr")} className={inputClass} />

@@ -1,4 +1,4 @@
-import type { ExamTarget, Seating } from "@/db/schema";
+import type { ExamTarget, PaymentMode, Seating } from "@/db/schema";
 
 export const seatingLabels: Record<Seating, string> = {
   reserved: "Reserved desk",
@@ -16,6 +16,13 @@ export const examLabels: Record<ExamTarget, string> = {
   police_bharti: "Police Bharti",
   tet: "TET / TAIT",
   other: "Other",
+};
+
+export const paymentModeLabels: Record<PaymentMode, string> = {
+  cash: "Cash",
+  upi: "UPI",
+  card: "Card",
+  bank_transfer: "Bank transfer",
 };
 
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });

@@ -3,13 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { RenewForm } from "@/components/admin/renew-form";
 import { RevealNumber } from "@/components/admin/reveal-number";
 import { requireAdmin } from "@/lib/admin-guard";
 import { adminHref } from "@/lib/admin-session";
 import { DOCUMENT_KINDS, documentLabels } from "@/lib/documents";
 import { maskAadhaar, maskPan } from "@/lib/id-numbers";
-import { examLabels, formatInr, formatShortDate, seatingLabels } from "@/lib/labels";
-import { feeStatus, getStudent, listStudentDocuments } from "@/lib/students";
+import { examLabels, formatInr, formatShortDate, paymentModeLabels, seatingLabels } from "@/lib/labels";
+import { whatsappLink, whatsappText } from "@/lib/reminder-text";
+import { feeStatus, getStudent, listPayments, listStudentDocuments } from "@/lib/students";
 
 export const metadata: Metadata = { title: "Student" };
 
@@ -30,8 +32,9 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   await requireAdmin();
   const { id } = await params;
-  const [student, documents] = await Promise.all([getStudent(id), listStudentDocuments(id)]);
+  const [student, documents, payments] = await Promise.all([getStudent(id), listStudentDocuments(id), listPayments(id)]);
   if (!student) notFound();
+  const today = new Date().toISOString().slice(0, 10);
 
   const fee = feeStatus(student.endsOn);
   const feeText =
@@ -45,6 +48,7 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
 
   const facts = [
     { label: "Mobile", value: <a href={`tel:+91${student.phone}`} className="link-quiet tabular-nums">{student.phone}</a> },
+    { label: "Email", value: student.email ?? <span className="text-ink-soft">None, so fee reminders go by WhatsApp only</span> },
     { label: "Preparing for", value: examLabels[student.examTarget] },
     { label: "Seat", value: student.seating === "reserved" ? `Desk ${student.seatNumber}` : student.seating ? seatingLabels[student.seating] : "None" },
     { label: "Joined", value: formatShortDate(student.joinedOn) },
@@ -64,6 +68,40 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
           </div>
         ))}
       </dl>
+
+      <section id="renew" aria-labelledby="renew-title" className="mt-14 scroll-mt-24">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-baseline">
+          <h2 id="renew-title" className="font-display text-h4">
+            Renew
+          </h2>
+          {student.endsOn && (
+            <a href={whatsappLink(student.phone, whatsappText({ fullName: student.fullName, endsOn: student.endsOn }, today))} target="_blank" rel="noreferrer" className="link-quiet">
+              Send fee reminder on WhatsApp
+            </a>
+          )}
+        </div>
+        <p className="mt-1 mb-6 text-caption text-ink-soft">
+          The new period starts when the current one ends{fee.kind === "overdue" ? ", or today, since it has already ended" : ""}.
+        </p>
+        <RenewForm studentId={student.id} monthlyFee={student.feeInr ?? 0} />
+
+        <h3 className="mt-10 text-caption text-ink-soft">Payments</h3>
+        {payments.length ? (
+          <table className="mt-2 w-full max-w-2xl text-left text-body">
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.id} className="border-b border-rule">
+                  <td className="py-2 pr-4">{formatShortDate(p.paidOn)}</td>
+                  <td className="py-2 pr-4 tabular-nums">{formatInr(p.amountInr)}</td>
+                  <td className="py-2 text-ink-soft">{paymentModeLabels[p.mode]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="mt-2 text-ink-soft">No payments recorded yet.</p>
+        )}
+      </section>
 
       <h2 className="mt-14 font-display text-h4">ID documents</h2>
       <dl className="mt-4 grid border-t border-rule sm:grid-cols-2">

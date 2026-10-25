@@ -1,4 +1,5 @@
 import "server-only";
+import "@/lib/system-ca";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 
 // Neon Auth (Better Auth, hosted by Neon) for the admin sign-in. Null until

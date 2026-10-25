@@ -48,6 +48,8 @@ export function buildMockStudents(): StudentRecord[] {
     aadhaarLast4: null,
     panLast4: null,
     documents: [],
+    email: null,
+    membershipId: `mock-m-${i + 1}`,
   }));
 }
 
