@@ -127,6 +127,18 @@ Name, mobile, area and exam are required. In the admin, set each enquiry's statu
 
 Scheduling: `vercel.json` sets this up on Vercel (set `CRON_SECRET` there and Vercel sends it). On any other host, create a free job at cron-job.org for `https://your-site/api/cron/reminders` at 03:30 UTC with the header `Authorization: Bearer <CRON_SECRET>`.
 
+## Deploying to Vercel
+
+1. vercel.com/new → import this repository (Next.js is detected; keep the default build settings).
+2. Copy `.env.production.example` somewhere private, fill in every value, and paste the whole text into Environment Variables → Key (Production). Vercel splits it into variables.
+3. Deploy, set `NEXT_PUBLIC_SITE_URL` to the live address and redeploy.
+4. In the Neon console → Auth, add the live address to the trusted domains.
+5. `DOCUMENTS_KEY` must be identical to your local one, or saved ID numbers and documents can't be read.
+
+Daily fee reminders run by themselves (`vercel.json`, 9:00 IST). A step-by-step guide for Gmail, WhatsApp, Google Forms and Vercel is kept outside the repository (`docs/Ekagra-Library-setup-guide.pdf` on the owner's computer).
+
+Planned, not built yet: automatic WhatsApp reminders through Meta's WhatsApp Cloud API (`WHATSAPP_*` settings), and Google Forms registration and payment forms that sync into the database through a Google Apps Script (`INTAKE_SECRET`).
+
 ## Database
 
 The schema is in `src/db/schema.ts` (students, memberships, seats, payments, enquiries, student documents, reminders).
