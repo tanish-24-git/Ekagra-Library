@@ -1,7 +1,7 @@
 "use client";
 import { createAuthClient } from "@neondatabase/auth/next";
 import { useActionState, useState } from "react";
-import { createAdminAccount, logout, signIn, type LoginState } from "@/app/admin/actions";
+import { logout, signIn, type LoginState } from "@/app/admin/actions";
 import { buttonClass } from "@/components/ui/button";
 
 const inputClass =
@@ -10,17 +10,13 @@ const inputClass =
 // Talks to Neon Auth through /api/auth on this site.
 const authClient = createAuthClient();
 
-// Sign in with Google or email, or (first time) create the admin account for
-// an allowed email. Google returns to `returnTo` (the login page), which
-// sends admins on to the admin and shows everyone else who they're signed in as.
+// Sign in with Google or with email and password. Accounts aren't created
+// here (see README: Opening the admin). Google returns to `returnTo` (the
+// login page), which sends admins on and tells anyone else who they're signed in as.
 export function LoginForm({ signedInAs, returnTo }: { signedInAs?: string; returnTo: string }) {
-  const [creating, setCreating] = useState(false);
   const [googleError, setGoogleError] = useState<string>();
   const [googlePending, setGooglePending] = useState(false);
-  const [signInState, signInAction, signingIn] = useActionState<LoginState, FormData>(signIn, {});
-  const [createState, createAction, creatingNow] = useActionState<LoginState, FormData>(createAdminAccount, {});
-  const state = creating ? createState : signInState;
-  const pending = creating ? creatingNow : signingIn;
+  const [state, action, pending] = useActionState<LoginState, FormData>(signIn, {});
 
   async function continueWithGoogle() {
     setGoogleError(undefined);
@@ -68,25 +64,18 @@ export function LoginForm({ signedInAs, returnTo }: { signedInAs?: string; retur
         or with email
       </p>
 
-      <form action={creating ? createAction : signInAction} className="mt-6 space-y-6" key={creating ? "create" : "sign-in"}>
-        {creating && (
-          <label className="block text-caption text-ink-soft">
-            Your name
-            <input name="name" autoComplete="name" defaultValue={state.name} className={inputClass} />
-          </label>
-        )}
+      <form action={action} className="mt-6 space-y-6">
         <label className="block text-caption text-ink-soft">
           Email
           <input name="email" type="email" required autoFocus autoComplete="email" defaultValue={state.email} aria-invalid={!!state.error} className={inputClass} />
         </label>
         <label className="block text-caption text-ink-soft">
-          {creating ? "Choose a password (at least 10 characters)" : "Password"}
+          Password
           <input
             name="password"
             type="password"
             required
-            minLength={creating ? 10 : undefined}
-            autoComplete={creating ? "new-password" : "current-password"}
+            autoComplete="current-password"
             aria-invalid={!!state.error}
             aria-describedby={state.error ? "login-error" : undefined}
             className={inputClass}
@@ -97,22 +86,10 @@ export function LoginForm({ signedInAs, returnTo }: { signedInAs?: string; retur
             {state.error}
           </p>
         )}
-        {state.notice && (
-          <p role="status" className="text-caption text-ok">
-            {state.notice}
-          </p>
-        )}
         <button type="submit" disabled={pending} className={buttonClass("primary", "w-full disabled:opacity-60")}>
-          {creating ? (pending ? "Creating account…" : "Create admin account") : pending ? "Signing in…" : "Sign in"}
+          {pending ? "Signing in…" : "Sign in"}
         </button>
       </form>
-
-      <p className="mt-6 text-caption text-ink-soft">
-        {creating ? "Already have an account? " : "First time here? "}
-        <button type="button" onClick={() => setCreating(!creating)} className="link-quiet cursor-pointer text-ink">
-          {creating ? "Sign in" : "Create your admin account"}
-        </button>
-      </p>
     </>
   );
 }

@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "admin:create": "node --use-system-ca --env-file=.env.local scripts/create-admin.mjs"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.7.0-beta",

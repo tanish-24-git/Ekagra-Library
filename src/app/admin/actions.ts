@@ -10,8 +10,20 @@ import { auth } from "@/lib/auth";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES, matchesType } from "@/lib/documents";
 import { formatShortDate } from "@/lib/labels";
 import { runReminders, type ReminderRun } from "@/lib/reminders";
-import { createStudent, renewStudent, revealIdNumber, type NewDocument } from "@/lib/students";
-import { createStudentSchema, renewSchema } from "@/lib/validation";
+import {
+  createStudent,
+  deleteStudent,
+  deleteStudentDocument,
+  markStudentLeft,
+  pauseStudent,
+  removeIdNumber,
+  renewStudent,
+  resumeStudent,
+  revealIdNumber,
+  updateStudent,
+  type NewDocument,
+} from "@/lib/students";
+import { createStudentSchema, editStudentSchema, renewSchema } from "@/lib/validation";
 
 // Wrong sign-ins: five tries per IP, then a 15-minute lockout. Kept in
 // memory, so it resets on restart and isn't shared between server instances.
@@ -20,8 +32,8 @@ const MAX_TRIES = 5;
 const LOCKOUT_MS = 15 * 60_000;
 const failures = new Map<string, { count: number; until: number }>();
 
-// email and name come back so the form keeps them after an error.
-export type LoginState = { error?: string; notice?: string; email?: string; name?: string };
+// email comes back so the form keeps it after an error.
+export type LoginState = { error?: string; email?: string };
 
 const credentials = (formData: FormData) => ({
   email: String(formData.get("email") ?? "").trim().toLowerCase(),
@@ -52,31 +64,25 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   redirect(adminHref());
 }
 
-// First-time setup: an address listed in ADMIN_EMAILS chooses its password.
-export async function createAdminAccount(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  if (!auth) return { error: "Admin sign-in isn’t set up yet. See README: Opening the admin." };
-  const { email, password } = credentials(formData);
-  const name = String(formData.get("name") ?? "").trim() || email.split("@")[0];
+export type PasswordState = { error?: string; message?: string };
 
-  if (!adminEmails().includes(email)) {
-    return { error: "This email isn’t on the admin list. Add it to ADMIN_EMAILS first, then try again.", email, name };
-  }
-  if (password.length < 10) return { error: "Use at least 10 characters for the password.", email, name };
+// Changes the signed-in admin's password and signs out their other devices.
+export async function changeAdminPassword(_prev: PasswordState, formData: FormData): Promise<PasswordState> {
+  await requireAdmin();
+  if (!auth) return { error: "Admin sign-in isn’t set up." };
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const repeat = String(formData.get("repeatPassword") ?? "");
+  // Neon Auth requires at least 8 characters; longer is safer.
+  if (newPassword.length < 8) return { error: "Use at least 8 characters for the new password." };
+  if (newPassword !== repeat) return { error: "The two new passwords don’t match. Type them again." };
+  if (newPassword === currentPassword) return { error: "Choose a password different from the current one." };
 
-  const { data, error } = await auth.signUp.email({ email, password, name });
+  const { error } = await auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true });
   if (error) {
-    return {
-      error: /exist/i.test(error.message ?? "")
-        ? "There’s already an account for this email. Sign in instead."
-        : `Couldn’t create the account: ${error.message ?? "unknown error"}.`,
-      email,
-      name,
-    };
+    return { error: /invalid|incorrect|password/i.test(error.message ?? "") ? "Your current password isn’t right." : `Couldn’t change the password: ${error.message}.` };
   }
-
-  // Without a session token the project wants the email verified first.
-  if (!data?.token) return { notice: "Account created. Check your inbox for the verification email, then sign in." };
-  redirect(adminHref());
+  return { message: "Password changed. Other devices have been signed out." };
 }
 
 export async function logout() {
@@ -84,16 +90,15 @@ export async function logout() {
   redirect("/");
 }
 
-export type AddStudentState = { message?: string; fields?: Record<string, string[] | undefined>; values?: Record<string, string> };
+export type StudentFormState = { message?: string; fields?: Record<string, string[] | undefined>; values?: Record<string, string> };
 
-export async function addStudent(_prev: AddStudentState, formData: FormData): Promise<AddStudentState> {
-  await requireAdmin();
+// Reads the form's text fields and checks any uploaded ID documents: allowed
+// type, under 4 MB, and content that really is that type.
+async function readStudentForm(formData: FormData) {
   const values = Object.fromEntries(
     [...formData.entries()].filter(([k, v]) => !k.startsWith("$") && typeof v === "string").map(([k, v]) => [k, String(v)]),
   );
-  const parsed = createStudentSchema.safeParse(values);
-  const fields: Record<string, string[] | undefined> = parsed.success ? {} : { ...z.flattenError(parsed.error).fieldErrors };
-
+  const fields: Record<string, string[] | undefined> = {};
   const documents: NewDocument[] = [];
   for (const kind of DOCUMENT_KINDS) {
     const file = formData.get(`doc_${kind}`);
@@ -106,15 +111,68 @@ export async function addStudent(_prev: AddStudentState, formData: FormData): Pr
       else fields[`doc_${kind}`] = ["This file isn’t a real JPG, PNG, WebP or PDF. Upload the photo or PDF again"];
     }
   }
-
   const sharesId = Boolean(values.aadhaar?.trim() || values.pan?.trim() || documents.length);
   if (sharesId && values.consent !== "on") fields.consent = ["Confirm the student agreed to share their ID"];
+  return { values, fields, documents };
+}
 
-  if (!parsed.success || Object.keys(fields).length) {
-    return { message: "Check the highlighted fields.", fields, values };
-  }
+export async function addStudent(_prev: StudentFormState, formData: FormData): Promise<StudentFormState> {
+  await requireAdmin();
+  const { values, fields, documents } = await readStudentForm(formData);
+  const parsed = createStudentSchema.safeParse(values);
+  if (!parsed.success) Object.assign(fields, z.flattenError(parsed.error).fieldErrors);
+  if (!parsed.success || Object.keys(fields).length) return { message: "Check the highlighted fields.", fields, values };
   await createStudent(parsed.data, documents);
   redirect(adminHref());
+}
+
+export async function editStudent(studentId: string, _prev: StudentFormState, formData: FormData): Promise<StudentFormState> {
+  await requireAdmin();
+  const { values, fields, documents } = await readStudentForm(formData);
+  const parsed = editStudentSchema.safeParse(values);
+  if (!parsed.success) Object.assign(fields, z.flattenError(parsed.error).fieldErrors);
+  if (!parsed.success || Object.keys(fields).length) return { message: "Check the highlighted fields.", fields, values };
+  const saved = await updateStudent(studentId, parsed.data, documents);
+  if (!saved) return { message: "This student no longer exists.", values };
+  redirect(adminHref(`/students/${studentId}`));
+}
+
+// Status changes and removals from the student page. Each checks the admin
+// session itself, then refreshes the page.
+export async function pauseStudentAction(studentId: string) {
+  await requireAdmin();
+  await pauseStudent(studentId);
+  refresh();
+}
+
+export async function resumeStudentAction(studentId: string) {
+  await requireAdmin();
+  await resumeStudent(studentId);
+  refresh();
+}
+
+export async function markLeftAction(studentId: string) {
+  await requireAdmin();
+  await markStudentLeft(studentId);
+  refresh();
+}
+
+export async function deleteStudentAction(studentId: string) {
+  await requireAdmin();
+  await deleteStudent(studentId);
+  redirect(adminHref());
+}
+
+export async function deleteDocumentAction(studentId: string, kind: DocumentKind) {
+  await requireAdmin();
+  if (DOCUMENT_KINDS.includes(kind)) await deleteStudentDocument(studentId, kind);
+  refresh();
+}
+
+export async function removeIdNumberAction(studentId: string, kind: "aadhaar" | "pan") {
+  await requireAdmin();
+  if (kind === "aadhaar" || kind === "pan") await removeIdNumber(studentId, kind);
+  refresh();
 }
 
 // Shows the full Aadhaar or PAN number on the student page when asked.

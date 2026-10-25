@@ -45,6 +45,11 @@ async function AdminGate({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             {!open && (
+              <Link href={adminHref("/account")} className="link-quiet">
+                Change password
+              </Link>
+            )}
+            {!open && (
               <form action={logout}>
                 <button type="submit" className="text-ink-soft hover:text-ink">
                   Sign out

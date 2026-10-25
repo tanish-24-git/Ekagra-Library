@@ -37,7 +37,11 @@ export function proxy(request: NextRequest) {
     if (pathname === "/admin/login") return NextResponse.redirect(new URL("/admin", request.url));
     return isAdminFolder ? private_(NextResponse.next()) : NextResponse.next();
   }
-  if (mode === "off" || !slug) return isAdminFolder ? hidden(request) : NextResponse.next();
+  if (mode === "off" || !slug) {
+    // While developing, explain how to set sign-in up instead of a bare 404.
+    if (isAdminFolder && process.env.NODE_ENV === "development") return NextResponse.rewrite(new URL("/admin/setup", request.url));
+    return isAdminFolder ? hidden(request) : NextResponse.next();
+  }
 
   if (isAdminFolder && slug !== "admin") return hidden(request);
   if (pathname !== `/${slug}` && !pathname.startsWith(`/${slug}/`)) return NextResponse.next();

@@ -48,14 +48,14 @@ Sign-in uses Neon Auth (Better Auth, hosted by Neon): email and password, or Con
 | Your computer or the live site | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` and `ADMIN_EMAILS` set | `/admin` (or `/<ADMIN_PATH>` if set), then sign in |
 | Anywhere with a real database but without those settings | | Admin is switched off: every admin URL answers 404 |
 
-First time: open the admin's login page, choose **Create your admin account**, and use an address from `ADMIN_EMAILS`. Or choose **Continue with Google** with that address. Accounts can only be created from this page and only for listed addresses.
+The login page has no sign-up. To add an admin, put their email in `ADMIN_EMAILS`, then run `npm run admin:create -- them@gmail.com "Their name"` in the project folder. It prints a temporary password; they sign in and change it under **Change password** in the admin. Or they can use **Continue with Google** with a listed address.
 
 For the live site:
 
 1. Set the variables above in your host's environment settings and deploy.
 2. In the Neon console, under Auth, add the live site's address to the trusted domains.
 3. Google sign-in uses Neon's shared Google credentials, which are meant for development. For the live site, add your own Google OAuth client in the Neon console.
-4. Open the admin, create your account and bookmark the page. Nothing on the public site links to it.
+4. Create your account with `npm run admin:create` (it talks to Neon Auth directly, so it works from your computer for the live site too), sign in and bookmark the page. Nothing on the public site links to it.
 
 ## How the admin stays hidden
 
@@ -64,7 +64,7 @@ When sign-in is set up:
 - Every admin page needs a Neon Auth session whose email is in `ADMIN_EMAILS`. Signed-in accounts that aren't on the list are treated as signed out.
 - With `ADMIN_PATH` set, `/admin` always answers 404 and the admin is served only from the secret path.
 - Wrong sign-ins are slowed down and locked out after five tries for 15 minutes; Neon Auth adds its own limits.
-- Public sign-up is closed: `/api/auth/sign-up` answers 404.
+- Public sign-up is closed: the login page has none and `/api/auth/sign-up` answers 404. Admin accounts are made with `npm run admin:create`. To close sign-up at Neon too, turn off sign-up under Auth in the Neon console after creating your accounts.
 - Admin responses send `X-Robots-Tag: noindex`. `robots.txt` deliberately doesn't mention the admin, because that would advertise it.
 - The proxy (`src/proxy.ts`) checks for the session cookie. The admin layout renders nothing until the session and email list check out (`src/lib/admin-guard.ts`), and every page, Server Action and the document route checks again.
 
@@ -90,6 +90,16 @@ The Add student form takes the Aadhaar and PAN numbers and photos or PDFs of the
 - Numbers and files are encrypted with AES-256-GCM (`src/lib/crypto-box.ts`) before they reach the database. Files are stored in the `student_documents` table.
 - The student page shows numbers masked until you choose Show full number. Files are served only to a signed-in admin, never cached.
 - The form asks you to confirm the student agreed to share their ID.
+
+## Managing students
+
+On a student's page:
+
+- **Edit**: details, seat, monthly fee, ID numbers (blank keeps the saved one) and ID documents (a new file replaces the old one).
+- **Pause membership**: freezes it. No reminders go out while paused. **Resume membership** moves the end date on by the days it was paused.
+- **Mark as left**: keeps their history but takes them off the active list (the Status filter shows them). **Renew** brings them back.
+- **Delete**: removes the student, their memberships, payments, reminders and ID documents for good, after a confirmation.
+- **Remove** a saved Aadhaar or PAN number, or **Delete this file** for a single document.
 
 ## Fees and reminders
 

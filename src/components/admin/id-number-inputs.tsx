@@ -6,9 +6,9 @@ import { aadhaarError, formatAadhaar, normalizePan, panError } from "@/lib/id-nu
 // groups of four, PAN in capitals with spaces removed. No Caps Lock needed.
 // The server error shows until the field is edited and left again.
 
-type Props = { defaultValue?: string; serverError?: string; className: string };
+type Props = { defaultValue?: string; serverError?: string; className: string; hint?: string };
 
-export function AadhaarInput({ defaultValue = "", serverError, className }: Props) {
+export function AadhaarInput({ defaultValue = "", serverError, className, hint }: Props) {
   const [value, setValue] = useState(() => formatAadhaar(defaultValue));
   const [left, setLeft] = useState(false);
   const error = left ? aadhaarError(value) : serverError;
@@ -27,12 +27,12 @@ export function AadhaarInput({ defaultValue = "", serverError, className }: Prop
         aria-invalid={!!error}
         className={`${className} tabular-nums tracking-wide`}
       />
-      {error && <span className="mt-1 block text-alert">{error}</span>}
+      {error ? <span className="mt-1 block text-alert">{error}</span> : hint && <span className="mt-1 block">{hint}</span>}
     </label>
   );
 }
 
-export function PanInput({ defaultValue = "", serverError, className }: Props) {
+export function PanInput({ defaultValue = "", serverError, className, hint }: Props) {
   const [value, setValue] = useState(() => normalizePan(defaultValue));
   const [left, setLeft] = useState(false);
   const error = left ? panError(value) : serverError;
@@ -52,7 +52,7 @@ export function PanInput({ defaultValue = "", serverError, className }: Props) {
         aria-invalid={!!error}
         className={`${className} tracking-wide`}
       />
-      {error && <span className="mt-1 block text-alert">{error}</span>}
+      {error ? <span className="mt-1 block text-alert">{error}</span> : hint && <span className="mt-1 block">{hint}</span>}
     </label>
   );
 }

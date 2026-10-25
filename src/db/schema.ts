@@ -25,7 +25,9 @@ const bytea = customType<{ data: Buffer; driverData: string | Buffer }>({
 
 // A member either keeps a reserved desk or sits at any free seat.
 export const seatingEnum = pgEnum("seating", ["reserved", "open"]);
-export const studentStatusEnum = pgEnum("student_status", ["active", "expired", "left"]);
+// paused: membership frozen (no reminders); resuming moves the end date on by
+// the days it was paused. left: kept for the records, renew to bring back.
+export const studentStatusEnum = pgEnum("student_status", ["active", "expired", "left", "paused"]);
 export const examTargetEnum = pgEnum("exam_target", [
   "mpsc_rajyaseva",
   "mpsc_combined",
@@ -76,6 +78,7 @@ export const students = pgTable("students", {
   emergencyPhone: text("emergency_phone"),
   joinedOn: date("joined_on").notNull(),
   status: studentStatusEnum("status").default("active").notNull(),
+  pausedOn: date("paused_on"),
   notes: text("notes"),
   ...timestamps,
 }).enableRLS();

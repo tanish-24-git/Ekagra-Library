@@ -50,6 +50,10 @@ export function buildMockStudents(): StudentRecord[] {
     documents: [],
     email: null,
     membershipId: `mock-m-${i + 1}`,
+    pausedOn: null,
+    emergencyName: null,
+    emergencyPhone: null,
+    notes: null,
   }));
 }
 

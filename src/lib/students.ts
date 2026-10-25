@@ -6,7 +6,7 @@ import type { DocumentKind, ExamTarget, PaymentMode, ReminderKind, Seating } fro
 import { open, openText, seal, sealText } from "./crypto-box";
 import { buildMockEnquiries, buildMockStudents } from "./mock-data";
 import type { EnquiryInput } from "./enquiry";
-import type { CreateStudentInput, RenewInput } from "./validation";
+import type { CreateStudentInput, EditStudentInput, RenewInput } from "./validation";
 
 // Data access for the admin and API routes. Uses Neon through Drizzle when
 // DATABASE_URL is set, otherwise an in-memory store seeded with mock rows.
@@ -18,7 +18,11 @@ export type StudentRecord = {
   fullName: string;
   phone: string;
   examTarget: ExamTarget;
-  status: "active" | "expired" | "left";
+  status: "active" | "expired" | "left" | "paused";
+  pausedOn: string | null;
+  emergencyName: string | null;
+  emergencyPhone: string | null;
+  notes: string | null;
   joinedOn: string;
   seating: Seating | null;
   seatNumber: string | null;
@@ -61,6 +65,12 @@ export function feeStatus(endsOn: string | null, today = todayIso()): FeeStatus 
   if (days < 0) return { kind: "overdue", days: -days };
   if (days <= REMIND_DAYS_BEFORE) return { kind: "due", days };
   return { kind: "paid", days };
+}
+
+export function addDays(isoDate: string, days: number) {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 export function addMonths(isoDate: string, months: number) {
@@ -131,6 +141,10 @@ export async function listStudents(where?: SQL): Promise<StudentRecord[]> {
     documents: uploaded.filter((d) => d.studentId === r.id).map((d) => d.kind),
     email: r.email,
     membershipId: r.membershipId,
+    pausedOn: r.pausedOn,
+    emergencyName: r.emergencyName,
+    emergencyPhone: r.emergencyPhone,
+    notes: r.notes,
   }));
 }
 
@@ -171,6 +185,10 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
       documents: documents.map((d) => d.kind),
       email: input.email ?? null,
       membershipId: `mock-m-${crypto.randomUUID()}`,
+      pausedOn: null,
+      emergencyName: input.emergencyName ?? null,
+      emergencyPhone: input.emergencyPhone ?? null,
+      notes: input.notes ?? null,
     };
     const store = mock();
     store.students.unshift(record);
@@ -238,6 +256,10 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
     documents: documents.map((d) => d.kind),
     email: input.email ?? null,
     membershipId,
+    pausedOn: null,
+    emergencyName: input.emergencyName ?? null,
+    emergencyPhone: input.emergencyPhone ?? null,
+    notes: input.notes ?? null,
   };
 }
 
@@ -304,20 +326,160 @@ export async function logReminders(rows: { membershipId: string; kind: ReminderK
   await db.insert(reminders).values(rows).onConflictDoNothing();
 }
 
-export async function updateStudent(
-  id: string,
-  patch: Partial<Pick<StudentRecord, "fullName" | "phone" | "status">> & { notes?: string },
-): Promise<StudentRecord | null> {
+// Saves edits: the student's details, their current seat and monthly fee, any
+// new ID numbers (blank ones keep what's saved) and any new documents, which
+// replace the old ones of the same kind. One round trip.
+export async function updateStudent(id: string, input: EditStudentInput, documents: NewDocument[] = []): Promise<StudentRecord | null> {
+  const current = await getStudent(id);
+  if (!current) return null;
+  const seatNumber = input.seating === "reserved" ? (input.seatNumber ?? null) : null;
+  const details = {
+    fullName: input.fullName,
+    phone: input.phone,
+    email: input.email ?? null,
+    examTarget: input.examTarget,
+    emergencyName: input.emergencyName ?? null,
+    emergencyPhone: input.emergencyPhone ?? null,
+    notes: input.notes ?? null,
+    ...(input.aadhaar ? { aadhaarEnc: sealText(input.aadhaar), aadhaarLast4: input.aadhaar.slice(-4) } : {}),
+    ...(input.pan ? { panEnc: sealText(input.pan), panLast4: input.pan.slice(-4) } : {}),
+  };
+
   if (!db) {
-    const record = mock().students.find((s) => s.id === id);
-    if (!record) return null;
-    Object.assign(record, patch);
-    return record;
+    const store = mock();
+    Object.assign(current, {
+      fullName: details.fullName,
+      phone: details.phone,
+      email: details.email,
+      examTarget: details.examTarget,
+      seating: input.seating,
+      seatNumber,
+      feeInr: input.feeInr,
+      emergencyName: details.emergencyName,
+      emergencyPhone: details.emergencyPhone,
+      notes: details.notes,
+      ...(input.aadhaar ? { aadhaarLast4: details.aadhaarLast4 } : {}),
+      ...(input.pan ? { panLast4: details.panLast4 } : {}),
+    });
+    store.idNumbers[id] = { ...store.idNumbers[id], ...(input.aadhaar ? { aadhaar: details.aadhaarEnc } : {}), ...(input.pan ? { pan: details.panEnc } : {}) };
+    for (const d of documents) {
+      store.documents = store.documents.filter((x) => !(x.studentId === id && x.kind === d.kind));
+      store.documents.push({ studentId: id, kind: d.kind, contentType: d.contentType, data: seal(d.bytes) });
+    }
+    current.documents = [...new Set([...current.documents, ...documents.map((d) => d.kind)])];
+    return current;
   }
-  const updated = await db.update(students).set(patch).where(eq(students.id, id)).returning({ id: students.id });
-  return updated.length ? getStudent(id) : null;
+
+  await db.batch([
+    db.update(students).set(details).where(eq(students.id, id)),
+    ...(seatNumber ? [db.insert(seats).values({ number: seatNumber }).onConflictDoNothing()] : []),
+    ...(current.membershipId
+      ? [
+          db
+            .update(memberships)
+            .set({
+              seating: input.seating,
+              seatId: seatNumber ? sql`(select ${seats.id} from ${seats} where ${seats.number} = ${seatNumber})` : null,
+              feeInr: input.feeInr,
+            })
+            .where(eq(memberships.id, current.membershipId)),
+        ]
+      : []),
+    ...(documents.length
+      ? [
+          db
+            .insert(studentDocuments)
+            .values(documents.map((d) => ({ studentId: id, kind: d.kind, contentType: d.contentType, sizeBytes: d.bytes.length, data: seal(d.bytes) })))
+            .onConflictDoUpdate({
+              target: [studentDocuments.studentId, studentDocuments.kind],
+              set: {
+                contentType: sql`excluded.content_type`,
+                sizeBytes: sql`excluded.size_bytes`,
+                data: sql`excluded.data`,
+                updatedAt: new Date(),
+              },
+            }),
+        ]
+      : []),
+  ]);
+  return getStudent(id);
 }
 
+const daysBetween = (from: string, to: string) => Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / DAY));
+
+// Freezes an active membership. No reminders go out while it's paused.
+export async function pauseStudent(id: string): Promise<boolean> {
+  const current = await getStudent(id);
+  if (!current || current.status !== "active") return false;
+  const today = todayIso();
+  if (!db) {
+    Object.assign(current, { status: "paused", pausedOn: today });
+    return true;
+  }
+  await db.update(students).set({ status: "paused", pausedOn: today }).where(eq(students.id, id));
+  return true;
+}
+
+// Unfreezes it. The end date moves on by the days it was paused, if the
+// membership was still running when it was paused.
+export async function resumeStudent(id: string): Promise<{ endsOn: string | null; days: number } | null> {
+  const current = await getStudent(id);
+  if (!current || current.status !== "paused") return null;
+  const today = todayIso();
+  const days = current.pausedOn ? daysBetween(current.pausedOn, today) : 0;
+  const extend = !!(current.endsOn && current.pausedOn && current.endsOn >= current.pausedOn && days > 0);
+  const endsOn = extend ? addDays(current.endsOn!, days) : current.endsOn;
+
+  if (!db) {
+    Object.assign(current, { status: "active", pausedOn: null, endsOn });
+    return { endsOn, days: extend ? days : 0 };
+  }
+  await db.batch([
+    db.update(students).set({ status: "active", pausedOn: null }).where(eq(students.id, id)),
+    ...(extend && current.membershipId ? [db.update(memberships).set({ endsOn: endsOn! }).where(eq(memberships.id, current.membershipId))] : []),
+  ]);
+  return { endsOn, days: extend ? days : 0 };
+}
+
+// Keeps the student and their history but takes them off the active list.
+export async function markStudentLeft(id: string): Promise<boolean> {
+  const current = await getStudent(id);
+  if (!current) return false;
+  if (!db) {
+    Object.assign(current, { status: "left", pausedOn: null });
+    return true;
+  }
+  await db.update(students).set({ status: "left", pausedOn: null }).where(eq(students.id, id));
+  return true;
+}
+
+export async function deleteStudentDocument(studentId: string, kind: DocumentKind): Promise<void> {
+  if (!db) {
+    const store = mock();
+    store.documents = store.documents.filter((d) => !(d.studentId === studentId && d.kind === kind));
+    const s = store.students.find((x) => x.id === studentId);
+    if (s) s.documents = s.documents.filter((k) => k !== kind);
+    return;
+  }
+  if (!isUuid(studentId)) return;
+  await db.delete(studentDocuments).where(and(eq(studentDocuments.studentId, studentId), eq(studentDocuments.kind, kind)));
+}
+
+export async function removeIdNumber(studentId: string, kind: "aadhaar" | "pan"): Promise<void> {
+  const cleared = kind === "aadhaar" ? { aadhaarEnc: null, aadhaarLast4: null } : { panEnc: null, panLast4: null };
+  if (!db) {
+    const store = mock();
+    if (store.idNumbers[studentId]) delete store.idNumbers[studentId][kind];
+    const s = store.students.find((x) => x.id === studentId);
+    if (s) Object.assign(s, kind === "aadhaar" ? { aadhaarLast4: null } : { panLast4: null });
+    return;
+  }
+  if (!isUuid(studentId)) return;
+  await db.update(students).set(cleared).where(eq(students.id, studentId));
+}
+
+// Removes the student for good, with their memberships, payments, reminders
+// and ID documents (the foreign keys cascade).
 export async function deleteStudent(id: string): Promise<boolean> {
   if (!db) {
     const store = mock();
@@ -325,6 +487,7 @@ export async function deleteStudent(id: string): Promise<boolean> {
     store.students = store.students.filter((s) => s.id !== id);
     return store.students.length < before;
   }
+  if (!isUuid(id)) return false;
   const deleted = await db.delete(students).where(eq(students.id, id)).returning({ id: students.id });
   return deleted.length > 0;
 }
