@@ -83,6 +83,75 @@ input:-webkit-autofill::first-line {
   font-size: var(--text-body);
 }
 
+/* Public pages show a progress bar at the top (ScrollProgress) instead of the
+   browser's scrollbar. The admin keeps its scrollbar. */
+html:has(.site-shell) {
+  scrollbar-width: none;
+}
+html:has(.site-shell)::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-track {
+  background: rgb(227 217 201 / 0.45);
+}
+.scroll-bar {
+  position: relative;
+  background: linear-gradient(90deg, var(--color-taupe), var(--color-bronze) 55%, var(--color-ink));
+  box-shadow: 0 0 10px rgb(122 92 59 / 0.45);
+}
+/* A soft sheen along the top half of the bar. */
+.scroll-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 50% 0;
+  background: linear-gradient(rgb(255 255 255 / 0.4), rgb(255 255 255 / 0));
+}
+
+/* Buttons: a glossy highlight on the upper half, a soft shadow, and a slight
+   lift on hover. Colours and the lift ease together. */
+.btn-gloss {
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 1px 2px rgb(59 49 43 / 0.2),
+    0 10px 24px -14px rgb(59 49 43 / 0.6);
+  transition:
+    background-color 0.4s var(--ease-quiet),
+    color 0.4s var(--ease-quiet),
+    box-shadow 0.4s var(--ease-quiet),
+    transform 0.4s var(--ease-quiet);
+}
+.btn-gloss::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px 50% 1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(rgb(255 255 255 / 0.16), rgb(255 255 255 / 0));
+  pointer-events: none;
+}
+.btn-gloss:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 2px 4px rgb(59 49 43 / 0.18),
+    0 16px 30px -14px rgb(59 49 43 / 0.55);
+}
+.btn-gloss:active {
+  transform: translateY(0);
+}
+.btn-gloss-light {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 1px 2px rgb(59 49 43 / 0.12),
+    0 10px 24px -14px rgb(59 49 43 / 0.35);
+}
+.btn-gloss-light::before {
+  background: linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0));
+}
+
 /* Paper grain over the public site. Static, never animated. */
 .grain {
   pointer-events: none;

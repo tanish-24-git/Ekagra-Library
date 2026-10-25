@@ -2,13 +2,16 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { Footer } from "@/components/site/footer";
 import { FooterReveal } from "@/components/site/footer-reveal";
 import { Header } from "@/components/site/header";
+import { ScrollProgress } from "@/components/site/scroll-progress";
 import { SmoothScroll } from "@/components/site/smooth-scroll";
 import { libraryJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
 export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
     <>
-      <div id="top" />
+      {/* site-shell: hides the browser scrollbar on public pages (globals.css). */}
+      <div id="top" className="site-shell" />
+      <ScrollProgress />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:bg-ink focus:px-4 focus:py-2 focus:text-paper">
         Skip to content
       </a>

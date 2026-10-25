@@ -7,5 +7,5 @@ import { useReducedMotion } from "motion/react";
 export function SmoothScroll() {
   const reduce = useReducedMotion();
   if (reduce) return null;
-  return <ReactLenis root options={{ lerp: 0.1, anchors: { offset: -72 } }} />;
+  return <ReactLenis root options={{ lerp: 0.085, wheelMultiplier: 0.95, anchors: { offset: -72 } }} />;
 }

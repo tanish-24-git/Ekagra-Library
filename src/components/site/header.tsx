@@ -36,8 +36,10 @@ export function Header() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow] duration-500 ease-quiet",
-        scrolled || open ? "bg-paper/90 shadow-[0_1px_0_var(--color-rule)] backdrop-blur-md" : "bg-transparent",
+        "fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,backdrop-filter] duration-500 ease-quiet",
+        scrolled || open
+          ? "bg-paper/72 shadow-[0_1px_0_rgb(220_210_194/0.8),0_14px_32px_-24px_rgb(59_49_43/0.45)] backdrop-blur-xl backdrop-saturate-150"
+          : "bg-transparent",
       )}
     >
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-5 md:px-10">
