@@ -26,11 +26,6 @@ export function ChangePasswordForm() {
           {state.error}
         </p>
       )}
-      {state.message && (
-        <p role="status" className="text-caption text-ok">
-          {state.message}
-        </p>
-      )}
       <button type="submit" disabled={pending} className={buttonClass("primary", "disabled:opacity-60")}>
         {pending ? "Changing…" : "Change password"}
       </button>

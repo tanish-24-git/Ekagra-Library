@@ -4,8 +4,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { DocumentKind } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin-guard";
-import { adminEmails, adminHref } from "@/lib/admin-session";
+import { emailUsedByAnotherAccount, endOtherSessions, mayBeAdminEmail, rememberAdmin, setSignInEmail } from "@/lib/admin-accounts";
+import { adminUser, requireAdmin } from "@/lib/admin-guard";
+import { adminHref } from "@/lib/admin-session";
 import { auth } from "@/lib/auth";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES, matchesType } from "@/lib/documents";
 import { attachIntakeFiles, getSubmission, paymentDetails, setSubmissionStatus } from "@/lib/intake";
@@ -55,8 +56,8 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   }
 
   const { email, password } = credentials(formData);
-  // Addresses outside ADMIN_EMAILS get the same answer as a wrong password.
-  const result = adminEmails().includes(email) ? await auth.signIn.email({ email, password }) : null;
+  // Addresses that aren't an admin's get the same answer as a wrong password.
+  const result = (await mayBeAdminEmail(email)) ? await auth.signIn.email({ email, password }) : null;
 
   if (!result || result.error) {
     const count = record && record.until > now ? record.count + 1 : 1;
@@ -69,7 +70,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   redirect(adminHref());
 }
 
-export type PasswordState = { error?: string; message?: string };
+export type PasswordState = { error?: string };
 
 // Changes the signed-in admin's password and signs out their other devices.
 export async function changeAdminPassword(_prev: PasswordState, formData: FormData): Promise<PasswordState> {
@@ -87,7 +88,38 @@ export async function changeAdminPassword(_prev: PasswordState, formData: FormDa
   if (error) {
     return { error: /invalid|incorrect|password/i.test(error.message ?? "") ? "Your current password isn’t right." : `Couldn’t change the password: ${error.message}.` };
   }
-  return { message: "Password changed. Other devices have been signed out." };
+  // Neon Auth replaced this browser's session too: load the page afresh with it.
+  redirect(adminHref("/account?changed=password"));
+}
+
+export type EmailState = { error?: string; email?: string };
+
+// Changes the signed-in admin's sign-in email. Needs their current password.
+// The account is recorded in the admins table first, so access doesn't
+// depend on ADMIN_EMAILS listing the new address, and the old address stops
+// counting. Other devices are signed out, as with a password change.
+export async function changeAdminEmail(_prev: EmailState, formData: FormData): Promise<EmailState> {
+  await requireAdmin();
+  const user = await adminUser();
+  if (!auth || !user) return { error: "Admin sign-in isn’t set up." };
+
+  const parsed = z.email().safeParse(String(formData.get("newEmail") ?? "").trim().toLowerCase());
+  const password = String(formData.get("currentPassword") ?? "");
+  if (!parsed.success) return { error: "Enter a valid email address.", email: String(formData.get("newEmail") ?? "") };
+  const newEmail = parsed.data;
+  if (newEmail === user.email.toLowerCase()) return { error: "That’s already your sign-in email.", email: newEmail };
+
+  const check = await auth.signIn.email({ email: user.email, password });
+  if (check.error) return { error: "Your current password isn’t right.", email: newEmail };
+  if (await emailUsedByAnotherAccount(newEmail, user.id)) return { error: "Another account already uses that email.", email: newEmail };
+
+  await rememberAdmin(user.id, newEmail, user.email);
+  await setSignInEmail(user.id, newEmail);
+  // Sign in again so this session carries the new email, then end the rest.
+  const fresh = await auth.signIn.email({ email: newEmail, password });
+  if (fresh.data?.token) await endOtherSessions(user.id, fresh.data.token);
+  // A fresh page load, so the page reads the new session cookie.
+  redirect(adminHref("/account?changed=email"));
 }
 
 export async function logout() {

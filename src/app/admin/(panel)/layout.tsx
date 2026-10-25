@@ -47,7 +47,7 @@ async function AdminGate({ children }: { children: React.ReactNode }) {
             ))}
             {!open && (
               <Link href={adminHref("/account")} className="link-quiet">
-                Change password
+                Email and password
               </Link>
             )}
             {!open && (

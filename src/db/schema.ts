@@ -204,6 +204,17 @@ export const intakeFiles = pgTable(
   (t) => [uniqueIndex("intake_file_question").on(t.submissionId, t.question)],
 ).enableRLS();
 
+// Admin accounts, by their Neon Auth user ID, so an admin who changes their
+// sign-in email keeps access. ADMIN_EMAILS is the starting list; an account
+// is recorded here the first time it changes its email. Its earlier emails
+// stop counting from ADMIN_EMAILS, so nobody else can take over an old one.
+export const admins = pgTable("admins", {
+  userId: text("user_id").primaryKey(),
+  email: text("email").notNull(),
+  previousEmails: text("previous_emails").array().default([]).notNull(),
+  ...timestamps,
+}).enableRLS();
+
 export const studentsRelations = relations(students, ({ many }) => ({
   memberships: many(memberships),
   payments: many(payments),
