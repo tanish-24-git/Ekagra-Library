@@ -137,7 +137,21 @@ Scheduling: `vercel.json` sets this up on Vercel (set `CRON_SECRET` there and Ve
 
 Daily fee reminders run by themselves (`vercel.json`, 9:00 IST). A step-by-step guide for Gmail, WhatsApp, Google Forms and Vercel is kept outside the repository (`docs/Ekagra-Library-setup-guide.pdf` on the owner's computer).
 
-Planned, not built yet: automatic WhatsApp reminders through Meta's WhatsApp Cloud API (`WHATSAPP_*` settings), and Google Forms registration and payment forms that sync into the database through a Google Apps Script (`INTAKE_SECRET`).
+## Google Forms sync
+
+Two Google Forms (registration and payment) send each response to the site, and the form keeps its own copy as a backup. Off until `INTAKE_SECRET` is set.
+
+1. Generate a secret (`node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`) and set `INTAKE_SECRET` in `.env` and on Vercel.
+2. In each form: ⋮ → Apps Script → paste `scripts/google-forms/intake.gs`, set `FORM` (`registration` or `payment`), `SITE` (`https://your-domain/api/intake/google-forms`) and `SECRET`, then add an "On form submit" trigger for `onSubmit`.
+3. Responses appear in the admin under **Form submissions**:
+   - A **registration** opens Add student already filled in (details, ID numbers, consent), and its uploaded files become the student's documents.
+   - A **payment** is matched to a student by mobile number. **Confirm and renew** records the payment on the date paid and adds the months. The screenshot stays with the submission.
+
+The script sends the answers first and then each file on its own; large photos are resized by Google Drive first, so every request stays under Vercel's 4.5 MB limit. Without the right `Authorization: Bearer <INTAKE_SECRET>` header, `/api/intake/google-forms` answers 404. Answers are stored encrypted; question titles are matched loosely (see the top of the script for the titles).
+
+## Automatic WhatsApp reminders
+
+Off until `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and `WHATSAPP_TEMPLATE_NAME` are set (Meta WhatsApp Cloud API; see the setup guide). The template's body takes two variables: `{{1}}` the student's first name and `{{2}}` the end date. Once set, the daily reminder job also sends it to each due student, once per membership. Until then, Send reminders now reports what it would send, and the Send on WhatsApp buttons work as before.
 
 ## Database
 
