@@ -16,7 +16,7 @@ type Saved = { aadhaarLast4: string | null; panLast4: string | null; licenceLast
 // `today` comes from the server so the joining date defaults to it without
 // the form reading the clock while rendering.
 type Props =
-  | { mode: "create"; today: string }
+  | { mode: "create"; today: string; initial?: Record<string, string>; formFiles?: string[] }
   | { mode: "edit"; today: string; studentId: string; initial: Record<string, string>; saved: Saved; cancelHref: string };
 
 // Adding a student (with the first payment) and editing one share this form.
@@ -28,7 +28,8 @@ export function StudentForm(props: Props) {
     {},
   );
   const [files, setFiles] = useState<Partial<Record<DocumentKind, File>>>({});
-  const v = state.values ?? (editing ? props.initial : {});
+  const v = state.values ?? props.initial ?? {};
+  const formFiles = !editing ? props.formFiles : undefined;
   const saved = editing ? props.saved : undefined;
   const err = (name: string) => state.fields?.[name]?.[0];
 
@@ -46,6 +47,15 @@ export function StudentForm(props: Props) {
 
   return (
     <form onSubmit={onSubmit} className="max-w-3xl space-y-12">
+      {v.intakeId && (
+        <>
+          <input type="hidden" name="intakeId" value={v.intakeId} />
+          <p className="border-l-2 border-bronze bg-linen px-4 py-3 text-caption text-ink">
+            Filled in from a Google Form registration. Check the details, choose the seat and fee, then add the student.
+            {formFiles?.length ? ` The form’s files (${formFiles.join(", ")}) are attached automatically unless you upload a replacement below.` : ""}
+          </p>
+        </>
+      )}
       <fieldset className="grid gap-6 md:grid-cols-2">
         <legend className="mb-4 font-display text-h4">Student</legend>
         <Field error={err("fullName")} label="Full name">
@@ -126,19 +136,19 @@ export function StudentForm(props: Props) {
             : "All optional: skip anything you don’t have yet and add it later with Edit. Numbers and files are encrypted, and the admin shows only the last four characters until you ask to see them."}
         </p>
         <AadhaarInput
-          defaultValue={state.values?.aadhaar}
+          defaultValue={v.aadhaar}
           serverError={err("aadhaar")}
           className={inputClass}
           hint={saved?.aadhaarLast4 ? `Saved: ${maskAadhaar(saved.aadhaarLast4)}` : undefined}
         />
         <PanInput
-          defaultValue={state.values?.pan}
+          defaultValue={v.pan}
           serverError={err("pan")}
           className={inputClass}
           hint={saved?.panLast4 ? `Saved: ${maskPan(saved.panLast4)}` : undefined}
         />
         <LicenceInput
-          defaultValue={state.values?.licence}
+          defaultValue={v.licence}
           serverError={err("licence")}
           className={inputClass}
           hint={saved?.licenceLast4 ? `Saved: ${maskLicence(saved.licenceLast4)}` : undefined}
@@ -156,7 +166,7 @@ export function StudentForm(props: Props) {
           ))}
         </div>
         <label className="flex items-start gap-3 text-caption text-ink md:col-span-2">
-          <input type="checkbox" name="consent" defaultChecked={state.values?.consent === "on"} className="mt-1 size-4 accent-ink" />
+          <input type="checkbox" name="consent" defaultChecked={v.consent === "on"} className="mt-1 size-4 accent-ink" />
           <span>
             The student agreed to share these ID details for admission and safety records. (Only needed if you add an ID.)
             {err("consent") && <span className="mt-1 block text-alert">{err("consent")}</span>}

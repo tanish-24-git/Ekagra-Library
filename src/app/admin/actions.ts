@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { adminEmails, adminHref } from "@/lib/admin-session";
 import { auth } from "@/lib/auth";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES, matchesType } from "@/lib/documents";
+import { attachIntakeFiles, getSubmission, paymentDetails, setSubmissionStatus } from "@/lib/intake";
 import { formatShortDate } from "@/lib/labels";
 import { runReminders, type ReminderRun } from "@/lib/reminders";
 import {
@@ -126,7 +127,12 @@ export async function addStudent(_prev: StudentFormState, formData: FormData): P
   const parsed = createStudentSchema.safeParse(values);
   if (!parsed.success) Object.assign(fields, z.flattenError(parsed.error).fieldErrors);
   if (!parsed.success || Object.keys(fields).length) return { message: "Check the highlighted fields.", fields, values };
-  await createStudent(parsed.data, documents);
+  const student = await createStudent(parsed.data, documents);
+  // Added from a Google Forms registration: bring its files across and mark it done.
+  if (values.intakeId) {
+    await attachIntakeFiles(values.intakeId, student.id, documents.map((d) => d.kind));
+    await setSubmissionStatus(values.intakeId, "accepted", student.id);
+  }
   redirect(adminHref());
 }
 
@@ -215,4 +221,21 @@ export async function renewMembership(studentId: string, _prev: RenewState, form
 export async function sendRemindersNow(): Promise<ReminderRun> {
   await requireAdmin();
   return runReminders();
+}
+
+// Google Forms payment: record it as a renewal for the matched student.
+export async function confirmPaymentAction(submissionId: string, studentId: string) {
+  await requireAdmin();
+  const submission = await getSubmission(submissionId);
+  if (!submission || submission.form !== "payment" || submission.status !== "new") return;
+  const p = paymentDetails(submission.answers);
+  await renewStudent(studentId, { months: p.months, amountInr: p.amountInr, mode: p.mode }, p.paidOn);
+  await setSubmissionStatus(submissionId, "accepted", studentId);
+  refresh();
+}
+
+export async function rejectSubmissionAction(submissionId: string) {
+  await requireAdmin();
+  await setSubmissionStatus(submissionId, "rejected");
+  refresh();
 }

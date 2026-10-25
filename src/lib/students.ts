@@ -287,7 +287,7 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
 
 // Records a payment and adds a new membership period. It starts where the
 // current one ends, or today if that has already passed.
-export async function renewStudent(studentId: string, input: RenewInput): Promise<StudentRecord | null> {
+export async function renewStudent(studentId: string, input: RenewInput, paidOn?: string): Promise<StudentRecord | null> {
   const current = await getStudent(studentId);
   if (!current) return null;
   const today = todayIso();
@@ -298,7 +298,7 @@ export async function renewStudent(studentId: string, input: RenewInput): Promis
   if (!db) {
     const membershipId = `mock-m-${crypto.randomUUID()}`;
     Object.assign(current, { endsOn, membershipId, status: "active", feeInr: monthlyFee });
-    mock().payments.push({ id: crypto.randomUUID(), studentId, amountInr: input.amountInr, mode: input.mode, paidOn: today });
+    mock().payments.push({ id: crypto.randomUUID(), studentId, amountInr: input.amountInr, mode: input.mode, paidOn: paidOn ?? today });
     return current;
   }
 
@@ -313,7 +313,7 @@ export async function renewStudent(studentId: string, input: RenewInput): Promis
       endsOn,
       feeInr: monthlyFee,
     }),
-    db.insert(payments).values({ studentId, membershipId, amountInr: input.amountInr, mode: input.mode, paidOn: today }),
+    db.insert(payments).values({ studentId, membershipId, amountInr: input.amountInr, mode: input.mode, paidOn: paidOn ?? today }),
     db.update(students).set({ status: "active" }).where(eq(students.id, studentId)),
   ]);
   return { ...current, endsOn, membershipId, status: "active", feeInr: monthlyFee };

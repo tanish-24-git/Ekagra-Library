@@ -26,6 +26,7 @@ async function AdminGate({ children }: { children: React.ReactNode }) {
     { href: adminHref(), label: "Students" },
     { href: adminHref("/students/new"), label: "Add student" },
     { href: adminHref("/enquiries"), label: "Enquiries" },
+    { href: adminHref("/form-submissions"), label: "Form submissions" },
   ];
 
   return (

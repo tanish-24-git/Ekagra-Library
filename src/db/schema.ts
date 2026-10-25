@@ -44,7 +44,10 @@ export const paymentModeEnum = pgEnum("payment_mode", ["cash", "upi", "card", "b
 export const enquiryStatusEnum = pgEnum("enquiry_status", ["new", "contacted", "joined", "closed"]);
 export const documentKindEnum = pgEnum("document_kind", ["aadhaar", "pan", "driving_licence", "photo"]);
 // Who a fee reminder went to: the owner's daily list, or the student by email.
-export const reminderKindEnum = pgEnum("reminder_kind", ["owner", "student_email"]);
+export const reminderKindEnum = pgEnum("reminder_kind", ["owner", "student_email", "student_whatsapp"]);
+// Google Forms submissions: which form, and what the admin did with it.
+export const intakeFormEnum = pgEnum("intake_form", ["registration", "payment"]);
+export const intakeStatusEnum = pgEnum("intake_status", ["new", "accepted", "rejected"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -163,6 +166,44 @@ export const reminders = pgTable(
   (t) => [uniqueIndex("reminders_membership_kind").on(t.membershipId, t.kind)],
 ).enableRLS();
 
+// A Google Forms response sent in by the Apps Script (src/app/api/intake).
+// The answers are encrypted as a whole (they can hold ID numbers); name and
+// phone are kept in the clear for the admin's list and for matching.
+export const intakeSubmissions = pgTable(
+  "intake_submissions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    form: intakeFormEnum("form").notNull(),
+    // Google's response ID, so a resent submission updates instead of duplicating.
+    responseId: text("response_id").notNull(),
+    name: text("name"),
+    phone: text("phone"),
+    answersEnc: text("answers_enc").notNull(),
+    status: intakeStatusEnum("status").default("new").notNull(),
+    studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("intake_form_response").on(t.form, t.responseId)],
+).enableRLS();
+
+// Files uploaded with a form response (ID photos, payment screenshots), encrypted.
+export const intakeFiles = pgTable(
+  "intake_files",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => intakeSubmissions.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("intake_file_question").on(t.submissionId, t.question)],
+).enableRLS();
+
 export const studentsRelations = relations(students, ({ many }) => ({
   memberships: many(memberships),
   payments: many(payments),
@@ -193,3 +234,5 @@ export type ExamTarget = (typeof examTargetEnum.enumValues)[number];
 export type DocumentKind = (typeof documentKindEnum.enumValues)[number];
 export type PaymentMode = (typeof paymentModeEnum.enumValues)[number];
 export type ReminderKind = (typeof reminderKindEnum.enumValues)[number];
+export type IntakeForm = (typeof intakeFormEnum.enumValues)[number];
+export type IntakeStatus = (typeof intakeStatusEnum.enumValues)[number];
