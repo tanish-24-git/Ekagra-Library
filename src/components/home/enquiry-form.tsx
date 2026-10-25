@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { buttonClass } from "@/components/ui/button";
 import { enquirySchema, type EnquiryField } from "@/lib/enquiry";
@@ -44,6 +44,11 @@ export function EnquiryForm() {
   const [refusal, setRefusal] = useState<string>();
   const [sent, setSent] = useState<{ name: string; phone: string } | null>(null);
   const [exams, setExams] = useState<string[]>([]);
+  // When the form appeared; the server ignores forms sent faster than a person could fill them.
+  const startedAt = useRef(0);
+  useEffect(() => {
+    startedAt.current = Date.now();
+  }, []);
 
   // values.preparingFor holds only the "Other" text; the payload merges in the chosen exams.
   const payload: Values = { ...values, preparingFor: combineExams(exams, values.preparingFor) };
@@ -83,7 +88,7 @@ export function EnquiryForm() {
 
     setStatus("sending");
     const company = (e.currentTarget.elements.namedItem("company") as HTMLInputElement | null)?.value;
-    const result = await submitEnquiry({ ...payload, company }).catch(() => null);
+    const result = await submitEnquiry({ ...payload, company, startedAt: startedAt.current }).catch(() => null);
 
     if (result?.ok) {
       setSent({ name: values.name.trim().split(/\s+/)[0], phone: formatPhone(values.phone) });

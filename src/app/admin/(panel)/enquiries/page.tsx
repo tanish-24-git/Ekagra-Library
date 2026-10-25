@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { deleteEnquiryAction } from "@/app/admin/actions";
+import { ConfirmButton } from "@/components/admin/confirm-button";
+import { EnquiryStatus } from "@/components/admin/enquiry-status";
 import { MockNotice } from "@/components/admin/mock-notice";
+import { adminHref } from "@/lib/admin-session";
 import { requireAdmin } from "@/lib/admin-guard";
 import { listEnquiries } from "@/lib/students";
 
@@ -10,7 +14,12 @@ export const metadata: Metadata = { title: "Enquiries" };
 export default function EnquiriesPage() {
   return (
     <>
-      <h1 className="mb-10 font-display text-h3">Enquiries</h1>
+      <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <h1 className="font-display text-h3">Enquiries</h1>
+        <a href={adminHref("/enquiries/export")} download className="link-quiet self-start md:self-auto">
+          Download Excel
+        </a>
+      </div>
       <Suspense fallback={<p className="text-ink-soft">Loading enquiries…</p>}>
         <EnquiryList />
       </Suspense>
@@ -95,7 +104,11 @@ async function EnquiryList() {
               {e.preparingFor ?? "Not given"}
               {e.reason && <span className="mt-1 block text-caption text-ink-soft">“{e.reason}”</span>}
             </p>
-            <p className="text-caption text-ink-soft md:col-span-2 md:text-right">{received.format(new Date(e.createdAt))}</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-caption text-ink-soft md:col-span-2 md:flex-col md:items-end">
+              <span>{received.format(new Date(e.createdAt))}</span>
+              <EnquiryStatus id={e.id} status={e.status} />
+              <ConfirmButton action={deleteEnquiryAction.bind(null, e.id)} label="Delete" confirm="Delete this enquiry?" className="text-caption" />
+            </div>
           </li>
         ))}
       </ul>
