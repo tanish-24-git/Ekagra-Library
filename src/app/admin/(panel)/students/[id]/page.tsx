@@ -17,8 +17,8 @@ import { RevealNumber } from "@/components/admin/reveal-number";
 import { requireAdmin } from "@/lib/admin-guard";
 import { adminHref } from "@/lib/admin-session";
 import { DOCUMENT_KINDS, documentLabels } from "@/lib/documents";
-import { maskAadhaar, maskPan } from "@/lib/id-numbers";
-import { examLabels, formatInr, formatShortDate, paymentModeLabels, seatingLabels } from "@/lib/labels";
+import { maskAadhaar, maskLicence, maskPan } from "@/lib/id-numbers";
+import { examLabels, formatDate, formatInr, formatShortDate, formatTenure, paymentModeLabels, seatingLabels } from "@/lib/labels";
 import { whatsappLink, whatsappText } from "@/lib/reminder-text";
 import { feeStatus, getStudent, listPayments, listStudentDocuments } from "@/lib/students";
 
@@ -62,20 +62,39 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
         ? "Marked as left. Renew to bring them back."
         : null;
 
+  const totalPaid = payments.reduce((sum, p) => sum + p.amountInr, 0);
+  const none = (text = "Not given") => <span className="text-ink-soft">{text}</span>;
   const facts = [
-    { label: "Mobile", value: <a href={`tel:+91${student.phone}`} className="link-quiet tabular-nums">{student.phone}</a> },
-    { label: "Email", value: student.email ?? <span className="text-ink-soft">None, so fee reminders go by WhatsApp only</span> },
+    { label: "Primary mobile", value: <a href={`tel:+91${student.phone}`} className="link-quiet tabular-nums">{student.phone}</a> },
+    {
+      label: "Secondary mobile",
+      value: student.secondaryPhone ? <a href={`tel:+91${student.secondaryPhone}`} className="link-quiet tabular-nums">{student.secondaryPhone}</a> : none(),
+    },
+    { label: "Email", value: student.email ?? none("None, so fee reminders go by WhatsApp only") },
+    { label: "Studying or working in", value: student.occupation ?? none() },
     { label: "Preparing for", value: examLabels[student.examTarget] },
+    { label: "Address", value: student.address ?? none() },
     { label: "Seat", value: student.seating === "reserved" ? `Desk ${student.seatNumber}` : student.seating ? seatingLabels[student.seating] : "None" },
-    { label: "Joined", value: formatShortDate(student.joinedOn) },
-    { label: "Membership ends", value: student.endsOn ? `${formatShortDate(student.endsOn)} (${feeText})` : "No plan" },
+    { label: "Joined", value: `${formatDate(student.joinedOn)} (${formatTenure(student.joinedOn, today)} here)` },
+    { label: "Next renewal", value: student.endsOn ? `${formatDate(student.endsOn)} (${feeText})` : "No plan" },
     { label: "Monthly fee", value: student.feeInr != null ? formatInr(student.feeInr) : "None" },
+    { label: "Total paid", value: `${formatInr(totalPaid)} in ${payments.length} ${payments.length === 1 ? "payment" : "payments"}` },
   ];
 
   return (
     <article className="mt-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <h1 className="font-display text-h3">{student.fullName}</h1>
+        <div className="flex items-center gap-4">
+          {student.documents.includes("photo") && (
+            // eslint-disable-next-line @next/next/no-img-element -- private file, not for the image optimiser
+            <img
+              src={adminHref(`/students/${student.id}/documents/photo`)}
+              alt={`Photo of ${student.fullName}`}
+              className="size-16 shrink-0 rounded-full border border-rule object-cover"
+            />
+          )}
+          <h1 className="font-display text-h3">{student.fullName}</h1>
+        </div>
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-body">
           <Link href={adminHref(`/students/${student.id}/edit`)} className="link-quiet">
             Edit
@@ -151,7 +170,7 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
       </section>
 
       <h2 className="mt-14 font-display text-h4">ID documents</h2>
-      <dl className="mt-4 grid border-t border-rule sm:grid-cols-2">
+      <dl className="mt-4 grid border-t border-rule sm:grid-cols-2 lg:grid-cols-3">
         <div className="border-b border-rule py-4 pr-4">
           <dt className="text-caption text-ink-soft">Aadhaar number</dt>
           <dd className="mt-1">
@@ -178,9 +197,22 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
             )}
           </dd>
         </div>
+        <div className="border-b border-rule py-4 pr-4">
+          <dt className="text-caption text-ink-soft">Driving licence number</dt>
+          <dd className="mt-1">
+            {student.licenceLast4 ? (
+              <span className="flex flex-wrap items-baseline gap-x-4">
+                <RevealNumber studentId={student.id} kind="licence" masked={maskLicence(student.licenceLast4)} />
+                <ConfirmButton action={removeIdNumberAction.bind(null, student.id, "licence")} label="Remove" confirm="Remove the saved licence number?" className="text-caption" />
+              </span>
+            ) : (
+              <span className="text-ink-soft">Not given</span>
+            )}
+          </dd>
+        </div>
       </dl>
 
-      <ul className="mt-8 grid gap-6 sm:grid-cols-3">
+      <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {DOCUMENT_KINDS.map((kind) => {
           const doc = documents.find((d) => d.kind === kind);
           const src = adminHref(`/students/${student.id}/documents/${kind}`);

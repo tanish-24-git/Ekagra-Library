@@ -54,6 +54,10 @@ export function buildMockStudents(): StudentRecord[] {
     emergencyName: null,
     emergencyPhone: null,
     notes: null,
+    secondaryPhone: null,
+    address: null,
+    occupation: null,
+    licenceLast4: null,
   }));
 }
 

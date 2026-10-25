@@ -4,7 +4,7 @@ import { revealNumber } from "@/app/admin/actions";
 import { formatAadhaar } from "@/lib/id-numbers";
 
 // A masked Aadhaar or PAN number with a button that fetches the full one.
-export function RevealNumber({ studentId, kind, masked }: { studentId: string; kind: "aadhaar" | "pan"; masked: string }) {
+export function RevealNumber({ studentId, kind, masked }: { studentId: string; kind: "aadhaar" | "pan" | "licence"; masked: string }) {
   const [full, setFull] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 

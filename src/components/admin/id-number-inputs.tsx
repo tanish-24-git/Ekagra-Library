@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { aadhaarError, formatAadhaar, normalizePan, panError } from "@/lib/id-numbers";
+import { aadhaarError, formatAadhaar, licenceError, normalizeLicence, normalizePan, panError } from "@/lib/id-numbers";
 
 // Aadhaar and PAN fields that format themselves while you type: Aadhaar in
 // groups of four, PAN in capitals with spaces removed. No Caps Lock needed.
@@ -49,6 +49,31 @@ export function PanInput({ defaultValue = "", serverError, className, hint }: Pr
         spellCheck={false}
         placeholder="ABCDE1234F"
         maxLength={14}
+        aria-invalid={!!error}
+        className={`${className} tracking-wide`}
+      />
+      {error ? <span className="mt-1 block text-alert">{error}</span> : hint && <span className="mt-1 block">{hint}</span>}
+    </label>
+  );
+}
+
+export function LicenceInput({ defaultValue = "", serverError, className, hint }: Props) {
+  const [value, setValue] = useState(() => normalizeLicence(defaultValue));
+  const [left, setLeft] = useState(false);
+  const error = left ? licenceError(value) : serverError;
+  return (
+    <label className="block text-caption text-ink-soft">
+      Driving licence number
+      <input
+        name="licence"
+        value={value}
+        onChange={(e) => setValue(normalizeLicence(e.target.value))}
+        onBlur={() => setLeft(true)}
+        autoCapitalize="characters"
+        autoComplete="off"
+        spellCheck={false}
+        placeholder="MH1220110012345"
+        maxLength={24}
         aria-invalid={!!error}
         className={`${className} tracking-wide`}
       />

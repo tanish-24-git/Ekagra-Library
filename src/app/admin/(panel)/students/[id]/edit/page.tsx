@@ -34,12 +34,17 @@ async function EditStudent({ params }: { params: Promise<{ id: string }> }) {
       <h1 className="mt-6 mb-10 font-display text-h3">Edit {student.fullName}</h1>
       <StudentForm
         mode="edit"
+        today={new Date().toISOString().slice(0, 10)}
         studentId={id}
         cancelHref={back}
-        saved={{ aadhaarLast4: student.aadhaarLast4, panLast4: student.panLast4, documents: student.documents }}
+        saved={{ aadhaarLast4: student.aadhaarLast4, panLast4: student.panLast4, licenceLast4: student.licenceLast4, documents: student.documents }}
         initial={{
           fullName: student.fullName,
           phone: student.phone,
+          secondaryPhone: student.secondaryPhone ?? "",
+          address: student.address ?? "",
+          occupation: student.occupation ?? "",
+          joinedOn: student.joinedOn,
           email: student.email ?? "",
           examTarget: student.examTarget,
           seating: student.seating ?? "open",

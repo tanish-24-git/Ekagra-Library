@@ -23,6 +23,10 @@ export type StudentRecord = {
   emergencyName: string | null;
   emergencyPhone: string | null;
   notes: string | null;
+  secondaryPhone: string | null;
+  address: string | null;
+  occupation: string | null;
+  licenceLast4: string | null;
   joinedOn: string;
   seating: Seating | null;
   seatNumber: string | null;
@@ -86,7 +90,7 @@ type MockDocument = { studentId: string; kind: DocumentKind; contentType: string
 type MockStore = {
   students: StudentRecord[];
   enquiries: EnquiryRecord[];
-  idNumbers: Record<string, { aadhaar?: string; pan?: string }>;
+  idNumbers: Record<string, { aadhaar?: string; pan?: string; licence?: string }>;
   documents: MockDocument[];
   payments: (PaymentRecord & { studentId: string })[];
   reminders: { membershipId: string; kind: ReminderKind }[];
@@ -146,6 +150,10 @@ export async function listStudents(where?: SQL): Promise<StudentRecord[]> {
     emergencyName: r.emergencyName,
     emergencyPhone: r.emergencyPhone,
     notes: r.notes,
+    secondaryPhone: r.secondaryPhone,
+    address: r.address,
+    occupation: r.occupation,
+    licenceLast4: r.licenceLast4,
   }));
 }
 
@@ -159,7 +167,8 @@ export async function getStudent(id: string): Promise<StudentRecord | null> {
 }
 
 export async function createStudent(input: CreateStudentInput, documents: NewDocument[] = []): Promise<StudentRecord> {
-  const startsOn = todayIso();
+  // The first paid period starts on the joining date.
+  const startsOn = input.joinedOn;
   const endsOn = addMonths(startsOn, input.months);
   const seatNumber = input.seating === "reserved" ? (input.seatNumber ?? null) : null;
   const idNumbers = {
@@ -167,6 +176,13 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
     aadhaarLast4: input.aadhaar?.slice(-4) ?? null,
     panEnc: input.pan ? sealText(input.pan) : null,
     panLast4: input.pan?.slice(-4) ?? null,
+    licenceEnc: input.licence ? sealText(input.licence) : null,
+    licenceLast4: input.licence?.slice(-4) ?? null,
+  };
+  const extra = {
+    secondaryPhone: input.secondaryPhone ?? null,
+    address: input.address ?? null,
+    occupation: input.occupation ?? null,
   };
 
   if (!db) {
@@ -190,11 +206,13 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
       emergencyName: input.emergencyName ?? null,
       emergencyPhone: input.emergencyPhone ?? null,
       notes: input.notes ?? null,
+      ...extra,
+      licenceLast4: idNumbers.licenceLast4,
     };
     const store = mock();
     store.students.unshift(record);
     store.payments.push({ id: crypto.randomUUID(), studentId: record.id, amountInr: input.feeInr * input.months, mode: input.paymentMode, paidOn: startsOn });
-    store.idNumbers[record.id] = { aadhaar: idNumbers.aadhaarEnc ?? undefined, pan: idNumbers.panEnc ?? undefined };
+    store.idNumbers[record.id] = { aadhaar: idNumbers.aadhaarEnc ?? undefined, pan: idNumbers.panEnc ?? undefined, licence: idNumbers.licenceEnc ?? undefined };
     store.documents.push(...documents.map((d) => ({ studentId: record.id, kind: d.kind, contentType: d.contentType, data: seal(d.bytes) })));
     return record;
   }
@@ -211,6 +229,7 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
     emergencyPhone: input.emergencyPhone,
     notes: input.notes,
     joinedOn: startsOn,
+    ...extra,
     ...idNumbers,
   });
 
@@ -261,6 +280,8 @@ export async function createStudent(input: CreateStudentInput, documents: NewDoc
     emergencyName: input.emergencyName ?? null,
     emergencyPhone: input.emergencyPhone ?? null,
     notes: input.notes ?? null,
+    ...extra,
+    licenceLast4: idNumbers.licenceLast4,
   };
 }
 
@@ -308,6 +329,44 @@ export async function listPayments(studentId: string): Promise<PaymentRecord[]> 
     .orderBy(desc(payments.paidOn), desc(payments.createdAt));
 }
 
+// Total paid and number of payments for each student.
+export async function paymentTotals(): Promise<Map<string, { total: number; count: number }>> {
+  if (!db) {
+    const totals = new Map<string, { total: number; count: number }>();
+    for (const p of mock().payments) {
+      const t = totals.get(p.studentId) ?? { total: 0, count: 0 };
+      totals.set(p.studentId, { total: t.total + p.amountInr, count: t.count + 1 });
+    }
+    return totals;
+  }
+  const rows = await db
+    .select({ studentId: payments.studentId, total: sql<number>`sum(${payments.amountInr})`.mapWith(Number), count: sql<number>`count(*)`.mapWith(Number) })
+    .from(payments)
+    .groupBy(payments.studentId);
+  return new Map(rows.map((r) => [r.studentId, { total: r.total, count: r.count }]));
+}
+
+// Every student with their full ID numbers decrypted, for the admin's Excel
+// download. No photos or files.
+export async function listStudentsForExport() {
+  const [list, totals] = await Promise.all([listStudents(), paymentTotals()]);
+  let sealed: Record<string, { aadhaar?: string | null; pan?: string | null; licence?: string | null }> = {};
+  if (!db) sealed = mock().idNumbers;
+  else {
+    const rows = await db.select({ id: students.id, aadhaar: students.aadhaarEnc, pan: students.panEnc, licence: students.licenceEnc }).from(students);
+    sealed = Object.fromEntries(rows.map((r) => [r.id, r]));
+  }
+  const reveal = (v?: string | null) => (v ? openText(v) : "");
+  return list.map((s) => ({
+    ...s,
+    aadhaar: reveal(sealed[s.id]?.aadhaar),
+    pan: reveal(sealed[s.id]?.pan),
+    licence: reveal(sealed[s.id]?.licence),
+    totalPaid: totals.get(s.id)?.total ?? 0,
+    paymentCount: totals.get(s.id)?.count ?? 0,
+  }));
+}
+
 // Which reminders have already gone out for these memberships.
 export async function sentReminders(membershipIds: string[]): Promise<{ membershipId: string; kind: ReminderKind }[]> {
   if (!membershipIds.length) return [];
@@ -342,8 +401,13 @@ export async function updateStudent(id: string, input: EditStudentInput, documen
     emergencyName: input.emergencyName ?? null,
     emergencyPhone: input.emergencyPhone ?? null,
     notes: input.notes ?? null,
+    secondaryPhone: input.secondaryPhone ?? null,
+    address: input.address ?? null,
+    occupation: input.occupation ?? null,
+    joinedOn: input.joinedOn,
     ...(input.aadhaar ? { aadhaarEnc: sealText(input.aadhaar), aadhaarLast4: input.aadhaar.slice(-4) } : {}),
     ...(input.pan ? { panEnc: sealText(input.pan), panLast4: input.pan.slice(-4) } : {}),
+    ...(input.licence ? { licenceEnc: sealText(input.licence), licenceLast4: input.licence.slice(-4) } : {}),
   };
 
   if (!db) {
@@ -359,10 +423,20 @@ export async function updateStudent(id: string, input: EditStudentInput, documen
       emergencyName: details.emergencyName,
       emergencyPhone: details.emergencyPhone,
       notes: details.notes,
+      secondaryPhone: details.secondaryPhone,
+      address: details.address,
+      occupation: details.occupation,
+      joinedOn: details.joinedOn,
+      ...(input.licence ? { licenceLast4: details.licenceLast4 } : {}),
       ...(input.aadhaar ? { aadhaarLast4: details.aadhaarLast4 } : {}),
       ...(input.pan ? { panLast4: details.panLast4 } : {}),
     });
-    store.idNumbers[id] = { ...store.idNumbers[id], ...(input.aadhaar ? { aadhaar: details.aadhaarEnc } : {}), ...(input.pan ? { pan: details.panEnc } : {}) };
+    store.idNumbers[id] = {
+      ...store.idNumbers[id],
+      ...(input.aadhaar ? { aadhaar: details.aadhaarEnc } : {}),
+      ...(input.pan ? { pan: details.panEnc } : {}),
+      ...(input.licence ? { licence: details.licenceEnc } : {}),
+    };
     for (const d of documents) {
       store.documents = store.documents.filter((x) => !(x.studentId === id && x.kind === d.kind));
       store.documents.push({ studentId: id, kind: d.kind, contentType: d.contentType, data: seal(d.bytes) });
@@ -466,13 +540,20 @@ export async function deleteStudentDocument(studentId: string, kind: DocumentKin
   await db.delete(studentDocuments).where(and(eq(studentDocuments.studentId, studentId), eq(studentDocuments.kind, kind)));
 }
 
-export async function removeIdNumber(studentId: string, kind: "aadhaar" | "pan"): Promise<void> {
-  const cleared = kind === "aadhaar" ? { aadhaarEnc: null, aadhaarLast4: null } : { panEnc: null, panLast4: null };
+export type IdNumberKind = "aadhaar" | "pan" | "licence";
+
+export async function removeIdNumber(studentId: string, kind: IdNumberKind): Promise<void> {
+  const cleared =
+    kind === "aadhaar"
+      ? { aadhaarEnc: null, aadhaarLast4: null }
+      : kind === "pan"
+        ? { panEnc: null, panLast4: null }
+        : { licenceEnc: null, licenceLast4: null };
   if (!db) {
     const store = mock();
     if (store.idNumbers[studentId]) delete store.idNumbers[studentId][kind];
     const s = store.students.find((x) => x.id === studentId);
-    if (s) Object.assign(s, kind === "aadhaar" ? { aadhaarLast4: null } : { panLast4: null });
+    if (s) Object.assign(s, { [`${kind}Last4`]: null });
     return;
   }
   if (!isUuid(studentId)) return;
@@ -520,14 +601,14 @@ export async function getStudentDocument(studentId: string, kind: DocumentKind):
   return doc ? { contentType: doc.contentType, bytes: open(doc.data) } : null;
 }
 
-// The full Aadhaar or PAN number, decrypted only when the admin asks for it.
-export async function revealIdNumber(studentId: string, kind: "aadhaar" | "pan"): Promise<string | null> {
+// The full Aadhaar, PAN or licence number, decrypted only when the admin asks for it.
+export async function revealIdNumber(studentId: string, kind: IdNumberKind): Promise<string | null> {
   if (!db) {
     const sealed = mock().idNumbers[studentId]?.[kind];
     return sealed ? openText(sealed) : null;
   }
   const [row] = await db
-    .select({ aadhaar: students.aadhaarEnc, pan: students.panEnc })
+    .select({ aadhaar: students.aadhaarEnc, pan: students.panEnc, licence: students.licenceEnc })
     .from(students)
     .where(eq(students.id, studentId));
   const sealed = row?.[kind];
@@ -537,10 +618,66 @@ export async function revealIdNumber(studentId: string, kind: "aadhaar" | "pan")
 export async function listEnquiries(): Promise<EnquiryRecord[]> {
   if (!db) return [...mock().enquiries];
   const rows = await db.select().from(enquiries).orderBy(desc(enquiries.createdAt));
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  return rows.map(toEnquiry);
 }
 
-export async function createEnquiry(input: EnquiryInput): Promise<EnquiryRecord> {
+// The fields the admin sees; the IP hash stays in the database.
+const toEnquiry = (r: typeof enquiries.$inferSelect): EnquiryRecord => ({
+  id: r.id,
+  name: r.name,
+  phone: r.phone,
+  location: r.location,
+  preparingFor: r.preparingFor,
+  reason: r.reason,
+  status: r.status,
+  createdAt: r.createdAt.toISOString(),
+});
+
+// For spam checks: enquiries from this connection in the last hour and day,
+// and whether this phone number already enquired in the last week.
+export async function enquiryActivity(ipHash: string, phone: string) {
+  const now = Date.now();
+  if (!db) {
+    const store = mock() as MockStore & { enquiryIps?: { ipHash: string; at: number }[] };
+    const ips = store.enquiryIps ?? [];
+    return {
+      lastHour: ips.filter((e) => e.ipHash === ipHash && now - e.at < 3_600_000).length,
+      lastDay: ips.filter((e) => e.ipHash === ipHash && now - e.at < 86_400_000).length,
+      phoneThisWeek: store.enquiries.some((e) => e.phone === phone && now - Date.parse(e.createdAt) < 7 * 86_400_000),
+    };
+  }
+  const [row] = await db
+    .select({
+      lastHour: sql<number>`count(*) filter (where ${enquiries.ipHash} = ${ipHash} and ${enquiries.createdAt} > now() - interval '1 hour')`.mapWith(Number),
+      lastDay: sql<number>`count(*) filter (where ${enquiries.ipHash} = ${ipHash} and ${enquiries.createdAt} > now() - interval '1 day')`.mapWith(Number),
+      phoneThisWeek: sql<number>`count(*) filter (where ${enquiries.phone} = ${phone} and ${enquiries.createdAt} > now() - interval '7 days')`.mapWith(Number),
+    })
+    .from(enquiries)
+    .where(sql`${enquiries.createdAt} > now() - interval '7 days'`);
+  return { lastHour: row?.lastHour ?? 0, lastDay: row?.lastDay ?? 0, phoneThisWeek: (row?.phoneThisWeek ?? 0) > 0 };
+}
+
+export async function deleteEnquiry(id: string): Promise<void> {
+  if (!db) {
+    const store = mock();
+    store.enquiries = store.enquiries.filter((e) => e.id !== id);
+    return;
+  }
+  if (!isUuid(id)) return;
+  await db.delete(enquiries).where(eq(enquiries.id, id));
+}
+
+export async function setEnquiryStatus(id: string, status: EnquiryRecord["status"]): Promise<void> {
+  if (!db) {
+    const e = mock().enquiries.find((x) => x.id === id);
+    if (e) e.status = status;
+    return;
+  }
+  if (!isUuid(id)) return;
+  await db.update(enquiries).set({ status }).where(eq(enquiries.id, id));
+}
+
+export async function createEnquiry(input: EnquiryInput, ipHash: string): Promise<EnquiryRecord> {
   if (!db) {
     const record: EnquiryRecord = {
       id: `mock-enq-${crypto.randomUUID()}`,
@@ -552,11 +689,13 @@ export async function createEnquiry(input: EnquiryInput): Promise<EnquiryRecord>
       status: "new",
       createdAt: new Date().toISOString(),
     };
-    mock().enquiries.unshift(record);
+    const store = mock() as MockStore & { enquiryIps?: { ipHash: string; at: number }[] };
+    store.enquiries.unshift(record);
+    (store.enquiryIps ??= []).push({ ipHash, at: Date.now() });
     return record;
   }
-  const [row] = await db.insert(enquiries).values(input).returning();
-  return { ...row, createdAt: row.createdAt.toISOString() };
+  const [row] = await db.insert(enquiries).values({ ...input, ipHash }).returning();
+  return toEnquiry(row);
 }
 
 // How many active members keep a reserved desk and how many sit anywhere.

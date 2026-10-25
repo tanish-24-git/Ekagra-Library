@@ -1,12 +1,14 @@
 import type { DocumentKind } from "@/db/schema";
 
 // The ID documents the library collects when a student joins.
-export const DOCUMENT_KINDS: DocumentKind[] = ["aadhaar", "pan", "driving_licence"];
+// The student's photo, then the ID documents the library collects.
+export const DOCUMENT_KINDS: DocumentKind[] = ["photo", "aadhaar", "pan", "driving_licence"];
 
 export const documentLabels: Record<DocumentKind, string> = {
   aadhaar: "Aadhaar card",
   pan: "PAN card",
   driving_licence: "Driving licence",
+  photo: "Student photo",
 };
 
 export const DOCUMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];

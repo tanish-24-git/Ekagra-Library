@@ -42,7 +42,7 @@ export const examTargetEnum = pgEnum("exam_target", [
 ]);
 export const paymentModeEnum = pgEnum("payment_mode", ["cash", "upi", "card", "bank_transfer"]);
 export const enquiryStatusEnum = pgEnum("enquiry_status", ["new", "contacted", "joined", "closed"]);
-export const documentKindEnum = pgEnum("document_kind", ["aadhaar", "pan", "driving_licence"]);
+export const documentKindEnum = pgEnum("document_kind", ["aadhaar", "pan", "driving_licence", "photo"]);
 // Who a fee reminder went to: the owner's daily list, or the student by email.
 export const reminderKindEnum = pgEnum("reminder_kind", ["owner", "student_email"]);
 
@@ -64,7 +64,10 @@ export const students = pgTable("students", {
   id: uuid("id").defaultRandom().primaryKey(),
   fullName: text("full_name").notNull(),
   phone: text("phone").notNull(),
+  secondaryPhone: text("secondary_phone"),
   email: text("email"),
+  // What they study or where they work, in their words.
+  occupation: text("occupation"),
   examTarget: examTargetEnum("exam_target").notNull(),
   examOther: text("exam_other"),
   address: text("address"),
@@ -74,6 +77,8 @@ export const students = pgTable("students", {
   aadhaarLast4: text("aadhaar_last4"),
   panEnc: text("pan_enc"),
   panLast4: text("pan_last4"),
+  licenceEnc: text("licence_enc"),
+  licenceLast4: text("licence_last4"),
   emergencyName: text("emergency_name"),
   emergencyPhone: text("emergency_phone"),
   joinedOn: date("joined_on").notNull(),
@@ -120,6 +125,8 @@ export const enquiries = pgTable("enquiries", {
   preparingFor: text("preparing_for"),
   // No longer asked; kept for enquiries sent before the form changed.
   reason: text("reason"),
+  // Salted hash of the sender's IP, for rate limiting. Never the IP itself.
+  ipHash: text("ip_hash"),
   status: enquiryStatusEnum("status").default("new").notNull(),
   ...timestamps,
 }).enableRLS();

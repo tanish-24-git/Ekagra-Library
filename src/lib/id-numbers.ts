@@ -75,5 +75,27 @@ export const panField = z
   })
   .transform((v) => v || undefined);
 
+// Driving licence numbers vary by state and year (e.g. MH12 20110012345),
+// so only the shape is checked: capitals and digits, 8 to 20 of them.
+export const normalizeLicence = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+
+export function licenceError(raw: string): string | undefined {
+  const l = normalizeLicence(raw);
+  if (!l) return undefined;
+  if (l.length < 8 || !/^[A-Z]{2}/.test(l) || !/\d{4}/.test(l)) return "Driving licence numbers look like MH12 20110012345";
+  return undefined;
+}
+
+export const licenceField = z
+  .string()
+  .optional()
+  .transform((v) => normalizeLicence(v ?? ""))
+  .superRefine((v, ctx) => {
+    const message = licenceError(v);
+    if (message) ctx.addIssue({ code: "custom", message });
+  })
+  .transform((v) => v || undefined);
+
 export const maskAadhaar = (last4: string) => `XXXX XXXX ${last4}`;
+export const maskLicence = (last4: string) => `XXXXXXXXXX${last4}`;
 export const maskPan = (last4: string) => `XXXXXX${last4}`;

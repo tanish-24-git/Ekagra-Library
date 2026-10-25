@@ -5,17 +5,19 @@ import { addStudent, editStudent, type StudentFormState } from "@/app/admin/acti
 import { buttonClass } from "@/components/ui/button";
 import type { DocumentKind } from "@/db/schema";
 import { DOCUMENT_KINDS, documentLabels } from "@/lib/documents";
-import { maskAadhaar, maskPan } from "@/lib/id-numbers";
+import { maskAadhaar, maskLicence, maskPan } from "@/lib/id-numbers";
 import { examLabels, paymentModeLabels, seatingLabels } from "@/lib/labels";
 import { DocumentInput } from "./document-input";
-import { AadhaarInput, PanInput } from "./id-number-inputs";
+import { AadhaarInput, LicenceInput, PanInput } from "./id-number-inputs";
 
 const inputClass = "mt-1 block w-full rounded-none border border-rule bg-paper px-3 py-2 text-body text-ink focus:border-ink focus:outline-none aria-[invalid=true]:border-alert";
 
-type Saved = { aadhaarLast4: string | null; panLast4: string | null; documents: DocumentKind[] };
+type Saved = { aadhaarLast4: string | null; panLast4: string | null; licenceLast4: string | null; documents: DocumentKind[] };
+// `today` comes from the server so the joining date defaults to it without
+// the form reading the clock while rendering.
 type Props =
-  | { mode: "create" }
-  | { mode: "edit"; studentId: string; initial: Record<string, string>; saved: Saved; cancelHref: string };
+  | { mode: "create"; today: string }
+  | { mode: "edit"; today: string; studentId: string; initial: Record<string, string>; saved: Saved; cancelHref: string };
 
 // Adding a student (with the first payment) and editing one share this form.
 // When editing, blank ID numbers and empty document slots keep what's saved.
@@ -49,11 +51,17 @@ export function StudentForm(props: Props) {
         <Field error={err("fullName")} label="Full name">
           <input name="fullName" required defaultValue={v.fullName} aria-invalid={!!err("fullName")} className={inputClass} />
         </Field>
-        <Field error={err("phone")} label="Mobile number">
+        <Field error={err("phone")} label="Primary mobile number">
           <input name="phone" type="tel" required defaultValue={v.phone} aria-invalid={!!err("phone")} className={inputClass} />
+        </Field>
+        <Field error={err("secondaryPhone")} label="Secondary mobile number (optional)">
+          <input name="secondaryPhone" type="tel" defaultValue={v.secondaryPhone} aria-invalid={!!err("secondaryPhone")} className={inputClass} />
         </Field>
         <Field error={err("email")} label="Email (optional, for fee reminders)">
           <input name="email" type="email" defaultValue={v.email} aria-invalid={!!err("email")} className={inputClass} />
+        </Field>
+        <Field error={err("occupation")} label="Studying or working in (optional)">
+          <input name="occupation" defaultValue={v.occupation} placeholder="BSc at Pune University, or software engineer" aria-invalid={!!err("occupation")} className={inputClass} />
         </Field>
         <Field error={err("examTarget")} label="Preparing for">
           <select name="examTarget" required defaultValue={v.examTarget ?? "mpsc_rajyaseva"} className={inputClass}>
@@ -64,6 +72,14 @@ export function StudentForm(props: Props) {
             ))}
           </select>
         </Field>
+        <Field error={err("joinedOn")} label="Joined on">
+          <input name="joinedOn" type="date" required defaultValue={v.joinedOn ?? props.today} max={props.today} aria-invalid={!!err("joinedOn")} className={inputClass} />
+        </Field>
+        <div className="md:col-span-2">
+          <Field error={err("address")} label="Address (optional)">
+            <textarea name="address" rows={2} defaultValue={v.address} aria-invalid={!!err("address")} className={inputClass} />
+          </Field>
+        </div>
       </fieldset>
 
       <fieldset className="grid gap-6 md:grid-cols-2">
@@ -107,7 +123,7 @@ export function StudentForm(props: Props) {
         <p className="-mt-2 text-caption text-ink-soft md:col-span-2">
           {editing
             ? "Leave a number blank to keep the saved one. A new file replaces the saved one of the same kind."
-            : "Optional. Numbers and files are encrypted, and the admin shows only the last four characters until you ask to see them."}
+            : "All optional: skip anything you don’t have yet and add it later with Edit. Numbers and files are encrypted, and the admin shows only the last four characters until you ask to see them."}
         </p>
         <AadhaarInput
           defaultValue={state.values?.aadhaar}
@@ -121,7 +137,13 @@ export function StudentForm(props: Props) {
           className={inputClass}
           hint={saved?.panLast4 ? `Saved: ${maskPan(saved.panLast4)}` : undefined}
         />
-        <div className="grid gap-6 md:col-span-2 md:grid-cols-3">
+        <LicenceInput
+          defaultValue={state.values?.licence}
+          serverError={err("licence")}
+          className={inputClass}
+          hint={saved?.licenceLast4 ? `Saved: ${maskLicence(saved.licenceLast4)}` : undefined}
+        />
+        <div className="grid gap-6 md:col-span-2 md:grid-cols-2">
           {DOCUMENT_KINDS.map((kind) => (
             <DocumentInput
               key={kind}
@@ -136,7 +158,7 @@ export function StudentForm(props: Props) {
         <label className="flex items-start gap-3 text-caption text-ink md:col-span-2">
           <input type="checkbox" name="consent" defaultChecked={state.values?.consent === "on"} className="mt-1 size-4 accent-ink" />
           <span>
-            The student agreed to share these ID details for admission and safety records.
+            The student agreed to share these ID details for admission and safety records. (Only needed if you add an ID.)
             {err("consent") && <span className="mt-1 block text-alert">{err("consent")}</span>}
           </span>
         </label>

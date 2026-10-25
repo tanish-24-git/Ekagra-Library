@@ -12,6 +12,7 @@ import { formatShortDate } from "@/lib/labels";
 import { runReminders, type ReminderRun } from "@/lib/reminders";
 import {
   createStudent,
+  deleteEnquiry,
   deleteStudent,
   deleteStudentDocument,
   markStudentLeft,
@@ -20,7 +21,10 @@ import {
   renewStudent,
   resumeStudent,
   revealIdNumber,
+  setEnquiryStatus,
   updateStudent,
+  type EnquiryRecord,
+  type IdNumberKind,
   type NewDocument,
 } from "@/lib/students";
 import { createStudentSchema, editStudentSchema, renewSchema } from "@/lib/validation";
@@ -169,14 +173,28 @@ export async function deleteDocumentAction(studentId: string, kind: DocumentKind
   refresh();
 }
 
-export async function removeIdNumberAction(studentId: string, kind: "aadhaar" | "pan") {
+export async function removeIdNumberAction(studentId: string, kind: IdNumberKind) {
   await requireAdmin();
-  if (kind === "aadhaar" || kind === "pan") await removeIdNumber(studentId, kind);
+  if (kind === "aadhaar" || kind === "pan" || kind === "licence") await removeIdNumber(studentId, kind);
   refresh();
 }
 
-// Shows the full Aadhaar or PAN number on the student page when asked.
-export async function revealNumber(studentId: string, kind: Extract<DocumentKind, "aadhaar" | "pan">): Promise<string | null> {
+const ENQUIRY_STATUSES: EnquiryRecord["status"][] = ["new", "contacted", "joined", "closed"];
+
+export async function setEnquiryStatusAction(enquiryId: string, status: EnquiryRecord["status"]) {
+  await requireAdmin();
+  if (ENQUIRY_STATUSES.includes(status)) await setEnquiryStatus(enquiryId, status);
+  refresh();
+}
+
+export async function deleteEnquiryAction(enquiryId: string) {
+  await requireAdmin();
+  await deleteEnquiry(enquiryId);
+  refresh();
+}
+
+// Shows the full Aadhaar, PAN or licence number on the student page when asked.
+export async function revealNumber(studentId: string, kind: IdNumberKind): Promise<string | null> {
   await requireAdmin();
   return revealIdNumber(studentId, kind);
 }
