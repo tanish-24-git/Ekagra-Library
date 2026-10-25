@@ -55,6 +55,26 @@ export function Visit() {
           <p className="mt-3 mb-10 max-w-[44ch] text-ink-soft">Tell us a little about yourself. Only your name and number are required.</p>
           <EnquiryForm />
         </div>
+
+        {/* Google's keyless embed: free, no API key or billing account. */}
+        <figure className="md:col-span-12 md:mt-14">
+          <div className="overflow-hidden rounded-[1.5rem] border border-rule bg-sand">
+            <iframe
+              title={`Map showing ${site.name} in ${site.area}, ${site.city}`}
+              src={site.mapEmbedUrl}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+              className="block h-[320px] w-full [filter:grayscale(0.25)_sepia(0.12)] md:h-[440px]"
+            />
+          </div>
+          <figcaption className="mt-3 flex flex-col gap-1 text-caption text-ink-soft sm:flex-row sm:justify-between sm:gap-6">
+            <span>{site.address.join(", ")}</span>
+            <a href={site.mapsUrl} target="_blank" rel="noreferrer" className="link-quiet shrink-0 text-ink">
+              Open in Google Maps
+            </a>
+          </figcaption>
+        </figure>
       </div>
     </section>
   );

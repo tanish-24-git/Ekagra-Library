@@ -23,6 +23,7 @@ export const site = {
   closes: "21:00",
   // Google Maps listing (place ID 0x3bc2c7b373b81c73:0x79b28d4e71ed84c5).
   mapsUrl: "https://maps.google.com/?cid=8769226792502133957",
+  mapEmbedUrl: "https://maps.google.com/maps?q=18.6019402,73.9125204&z=16&hl=en&output=embed",
   geo: { latitude: 18.6019402, longitude: 73.9125204 },
   postalAddress: {
     streetAddress: "Royal Heights, Sr. No. 285, 3/4, Porwal Sathe Wasti Road, opposite Gini Bellina, Kutwal Colony",
