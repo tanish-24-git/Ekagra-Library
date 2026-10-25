@@ -15,9 +15,14 @@ export default function AdminHome() {
     <>
       <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <h1 className="font-display text-h3">Students</h1>
-        <Link href={adminHref("/students/new")} className={buttonClass("primary", "self-start py-2.5")}>
-          Add student
-        </Link>
+        <div className="flex flex-wrap items-center gap-6">
+          <a href={adminHref("/students/export")} download className="link-quiet">
+            Download Excel
+          </a>
+          <Link href={adminHref("/students/new")} className={buttonClass("primary", "py-2.5")}>
+            Add student
+          </Link>
+        </div>
       </div>
       <Suspense fallback={<p className="text-ink-soft">Loading students…</p>}>
         <StudentsOverview />
