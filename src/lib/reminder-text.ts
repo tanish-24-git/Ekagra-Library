@@ -6,7 +6,7 @@ import { site } from "@/content/site";
 const longDate = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long" });
 export const formatLongDate = (isoDate: string) => longDate.format(new Date(`${isoDate}T00:00:00`));
 
-const firstName = (fullName: string) => fullName.trim().split(/\s+/)[0];
+export const firstName = (fullName: string) => fullName.trim().split(/\s+/)[0];
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 type Due = { fullName: string; phone: string; endsOn: string; seatNumber: string | null; feeInr: number | null };
