@@ -28,8 +28,9 @@ export default function AdminHome() {
 async function StudentsOverview() {
   await connection();
   await requireAdmin();
-  const [students, seats, enquiries] = await Promise.all([listStudents(), seatSummary(site.seats), listEnquiries()]);
-  const rows = students.map((s) => ({ ...s, fee: feeStatus(s.endsOn) }));
+  const [students, enquiries] = await Promise.all([listStudents(), listEnquiries()]);
+  const seats = await seatSummary(site.seats, students);
+  const rows = students.map((s) => ({ ...s, fee: feeStatus(s.endsOn), href: adminHref(`/students/${s.id}`) }));
   const active = rows.filter((r) => r.status === "active").length;
   const due = rows.filter((r) => r.fee.kind === "due").length;
   const overdue = rows.filter((r) => r.fee.kind === "overdue").length;

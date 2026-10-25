@@ -45,6 +45,9 @@ export function buildMockStudents(): StudentRecord[] {
     seatNumber,
     endsOn: isoDay(endsInDays),
     feeInr,
+    aadhaarLast4: null,
+    panLast4: null,
+    documents: [],
   }));
 }
 

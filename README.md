@@ -26,6 +26,7 @@ Open the admin at **http://localhost:3000/admin**. In development it opens witho
 | `ADMIN_PATH` | Secret address of the admin, e.g. `desk-7fq2k9` serves it at `/desk-7fq2k9`. |
 | `ADMIN_PASSWORD` | Admin password. |
 | `ADMIN_SESSION_SECRET` | Long random string used to sign admin sessions. |
+| `DOCUMENTS_KEY` | 64 hex characters that encrypt ID numbers and documents. Keep a backup: without it they can't be read. |
 
 To generate the three admin values:
 
@@ -56,9 +57,21 @@ When the admin settings are present:
 
 Changing `ADMIN_PATH` needs a rebuild, because the admin's links are rendered at build time.
 
+On an office network that inspects HTTPS (Node errors like `fetch failed` or `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`), start Node with the system certificates: `$env:NODE_OPTIONS="--use-system-ca"; npm run dev` in PowerShell.
+
+## ID documents
+
+The Add student form takes the Aadhaar and PAN numbers and photos or PDFs of the Aadhaar card, PAN card and driving licence.
+
+- Numbers are checked as you type: Aadhaar groups itself as `1234 5678 9012` and must pass its checksum; PAN switches to capitals.
+- Photos are shrunk in the browser before upload (longest side 1800px).
+- Numbers and files are encrypted with AES-256-GCM (`src/lib/crypto-box.ts`) before they reach the database. Files are stored in the `student_documents` table.
+- The student page shows numbers masked until you choose Show full number. Files are served only to a signed-in admin, never cached.
+- The form asks you to confirm the student agreed to share their ID.
+
 ## Database
 
-The schema is in `src/db/schema.ts` (students, memberships, seats, payments, enquiries).
+The schema is in `src/db/schema.ts` (students, memberships, seats, payments, enquiries, student documents).
 
 ```bash
 npm run db:push       # create or update tables in Neon from the schema

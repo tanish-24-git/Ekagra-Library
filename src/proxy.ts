@@ -14,7 +14,10 @@ const hidden = (request: NextRequest) => NextResponse.rewrite(new URL("/_not-fou
 function private_(response: NextResponse) {
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   response.headers.set("Cache-Control", "private, no-store");
-  response.headers.set("Referrer-Policy", "no-referrer");
+  // same-origin, not no-referrer: the secret path still never reaches other
+  // sites, and the browser keeps sending a real Origin on form posts, which
+  // Server Actions need (no-referrer makes it "null" and they are rejected).
+  response.headers.set("Referrer-Policy", "same-origin");
   return response;
 }
 

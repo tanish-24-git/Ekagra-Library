@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
 import { SESSION_COOKIE, SESSION_HOURS, adminHref, createSession } from "@/lib/admin-session";
-import { createStudent } from "@/lib/students";
+import type { DocumentKind } from "@/db/schema";
+import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "@/lib/documents";
+import { createStudent, revealIdNumber, type NewDocument } from "@/lib/students";
 import { createStudentSchema } from "@/lib/validation";
 
 // Wrong passwords: five tries per IP, then a 15-minute lockout. Kept in
@@ -57,11 +59,33 @@ export type AddStudentState = { message?: string; fields?: Record<string, string
 
 export async function addStudent(_prev: AddStudentState, formData: FormData): Promise<AddStudentState> {
   await requireAdmin();
-  const values = Object.fromEntries([...formData.entries()].filter(([k]) => !k.startsWith("$")).map(([k, v]) => [k, String(v)]));
+  const values = Object.fromEntries(
+    [...formData.entries()].filter(([k, v]) => !k.startsWith("$") && typeof v === "string").map(([k, v]) => [k, String(v)]),
+  );
   const parsed = createStudentSchema.safeParse(values);
-  if (!parsed.success) {
-    return { message: "Check the highlighted fields.", fields: z.flattenError(parsed.error).fieldErrors, values };
+  const fields: Record<string, string[] | undefined> = parsed.success ? {} : { ...z.flattenError(parsed.error).fieldErrors };
+
+  const documents: NewDocument[] = [];
+  for (const kind of DOCUMENT_KINDS) {
+    const file = formData.get(`doc_${kind}`);
+    if (!(file instanceof File) || file.size === 0) continue;
+    if (!DOCUMENT_TYPES.includes(file.type)) fields[`doc_${kind}`] = ["Upload a JPG, PNG, WebP or PDF file"];
+    else if (file.size > MAX_DOCUMENT_BYTES) fields[`doc_${kind}`] = ["This file is over 4 MB. Upload a smaller photo"];
+    else documents.push({ kind, contentType: file.type, bytes: Buffer.from(await file.arrayBuffer()) });
   }
-  await createStudent(parsed.data);
+
+  const sharesId = Boolean(values.aadhaar?.trim() || values.pan?.trim() || documents.length);
+  if (sharesId && values.consent !== "on") fields.consent = ["Confirm the student agreed to share their ID"];
+
+  if (!parsed.success || Object.keys(fields).length) {
+    return { message: "Check the highlighted fields.", fields, values };
+  }
+  await createStudent(parsed.data, documents);
   redirect(adminHref());
+}
+
+// Shows the full Aadhaar or PAN number on the student page when asked.
+export async function revealNumber(studentId: string, kind: Extract<DocumentKind, "aadhaar" | "pan">): Promise<string | null> {
+  await requireAdmin();
+  return revealIdNumber(studentId, kind);
 }

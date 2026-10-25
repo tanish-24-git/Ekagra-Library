@@ -1,11 +1,12 @@
 "use client";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Seating } from "@/db/schema";
 import { cn } from "@/lib/cn";
 import { examLabels, formatInr, formatShortDate, seatingLabels } from "@/lib/labels";
 import type { FeeStatus, StudentRecord } from "@/lib/students";
 
-export type StudentRow = StudentRecord & { fee: FeeStatus };
+export type StudentRow = StudentRecord & { fee: FeeStatus; href: string };
 
 type FeeFilter = "all" | "due" | "overdue";
 
@@ -76,10 +77,15 @@ export function StudentsTable({ rows }: { rows: StudentRow[] }) {
               <tr key={r.id} className="border-b border-rule align-top">
                 <td className="py-4 pr-4 tabular-nums">{r.seatNumber ?? <span className="text-ink-soft">Sits anywhere</span>}</td>
                 <td className="py-4 pr-4">
-                  <span className="block font-medium">{r.fullName}</span>
+                  <Link href={r.href} className="link-quiet block font-medium">
+                    {r.fullName}
+                  </Link>
                   <a href={`tel:+91${r.phone}`} className="text-caption text-ink-soft tabular-nums hover:text-ink">
                     {r.phone}
                   </a>
+                  <span className={cn("block text-caption", r.documents.length ? "text-ink-soft" : "text-due")}>
+                    {r.documents.length ? `${r.documents.length} of 3 ID documents` : "No ID documents"}
+                  </span>
                 </td>
                 <td className="py-4 pr-4">{examLabels[r.examTarget]}</td>
                 <td className="py-4 pr-4">

@@ -1,18 +1,35 @@
 "use client";
-import { useActionState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { addStudent, type AddStudentState } from "@/app/admin/actions";
 import { buttonClass } from "@/components/ui/button";
+import type { DocumentKind } from "@/db/schema";
+import { DOCUMENT_KINDS, documentLabels } from "@/lib/documents";
 import { examLabels, seatingLabels } from "@/lib/labels";
+import { DocumentInput } from "./document-input";
+import { AadhaarInput, PanInput } from "./id-number-inputs";
 
 const inputClass = "mt-1 block w-full rounded-none border border-rule bg-paper px-3 py-2 text-body text-ink focus:border-ink focus:outline-none aria-[invalid=true]:border-alert";
 
 export function AddStudentForm() {
   const [state, action, pending] = useActionState<AddStudentState, FormData>(addStudent, {});
+  const [files, setFiles] = useState<Partial<Record<DocumentKind, File>>>({});
   const v = state.values ?? {};
   const err = (name: string) => state.fields?.[name]?.[0];
 
+  // Submitted by hand rather than through `action`, so the chosen files and
+  // typed values stay put if the server sends the form back with errors.
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    for (const kind of DOCUMENT_KINDS) {
+      const file = files[kind];
+      if (file) data.set(`doc_${kind}`, file);
+    }
+    startTransition(() => action(data));
+  }
+
   return (
-    <form action={action} className="max-w-3xl space-y-12">
+    <form onSubmit={onSubmit} className="max-w-3xl space-y-12">
       <fieldset className="grid gap-6 md:grid-cols-2">
         <legend className="mb-4 font-display text-h4">Student</legend>
         <Field error={err("fullName")} label="Full name">
@@ -55,6 +72,33 @@ export function AddStudentForm() {
         <Field error={err("feeInr")} label="Monthly fee (₹)">
           <input name="feeInr" type="number" min={0} required defaultValue={v.feeInr} aria-invalid={!!err("feeInr")} className={inputClass} />
         </Field>
+      </fieldset>
+
+      <fieldset className="grid gap-6 md:grid-cols-2">
+        <legend className="mb-1 font-display text-h4">ID documents</legend>
+        <p className="-mt-2 text-caption text-ink-soft md:col-span-2">
+          Optional. Numbers and files are encrypted, and the admin shows only the last four characters until you ask to see them.
+        </p>
+        <AadhaarInput defaultValue={v.aadhaar} serverError={err("aadhaar")} className={inputClass} />
+        <PanInput defaultValue={v.pan} serverError={err("pan")} className={inputClass} />
+        <div className="grid gap-6 md:col-span-2 md:grid-cols-3">
+          {DOCUMENT_KINDS.map((kind) => (
+            <DocumentInput
+              key={kind}
+              label={documentLabels[kind]}
+              file={files[kind]}
+              onChange={(file) => setFiles((f) => ({ ...f, [kind]: file }))}
+              serverError={err(`doc_${kind}`)}
+            />
+          ))}
+        </div>
+        <label className="flex items-start gap-3 text-caption text-ink md:col-span-2">
+          <input type="checkbox" name="consent" defaultChecked={v.consent === "on"} className="mt-1 size-4 accent-ink" />
+          <span>
+            The student agreed to share these ID details for admission and safety records.
+            {err("consent") && <span className="mt-1 block text-alert">{err("consent")}</span>}
+          </span>
+        </label>
       </fieldset>
 
       <fieldset className="grid gap-6 md:grid-cols-2">

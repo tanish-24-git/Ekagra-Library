@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { examTargetEnum, seatingEnum } from "@/db/schema";
 import { indianMobile, optionalText, personName } from "./fields";
+import { aadhaarField, panField } from "./id-numbers";
 
 const note = optionalText(1000, "Keep notes under 1000 characters");
 
@@ -17,6 +18,8 @@ export const createStudentSchema = z
     emergencyName: optionalText(60, "Keep the name under 60 characters"),
     emergencyPhone: z.union([z.literal(""), indianMobile]).optional().transform((v) => v || undefined),
     notes: note,
+    aadhaar: aadhaarField,
+    pan: panField,
   })
   .refine((v) => v.seating === "open" || v.seatNumber, {
     path: ["seatNumber"],
