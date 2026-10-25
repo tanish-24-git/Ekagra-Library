@@ -45,6 +45,7 @@ export type EnquiryRecord = {
   id: string;
   name: string;
   phone: string;
+  location: string | null;
   preparingFor: string | null;
   reason: string | null;
   status: "new" | "contacted" | "joined" | "closed";
@@ -545,8 +546,9 @@ export async function createEnquiry(input: EnquiryInput): Promise<EnquiryRecord>
       id: `mock-enq-${crypto.randomUUID()}`,
       name: input.name,
       phone: input.phone,
-      preparingFor: input.preparingFor ?? null,
-      reason: input.reason ?? null,
+      location: input.location,
+      preparingFor: input.preparingFor,
+      reason: null,
       status: "new",
       createdAt: new Date().toISOString(),
     };

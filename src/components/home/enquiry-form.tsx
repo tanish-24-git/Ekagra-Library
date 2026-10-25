@@ -5,23 +5,23 @@ import { z } from "zod";
 import { buttonClass } from "@/components/ui/button";
 import { enquirySchema, type EnquiryField } from "@/lib/enquiry";
 import { submitEnquiry } from "@/app/(site)/actions";
-import { cn } from "@/lib/cn";
 import { ExamSelect } from "./exam-select";
 
 type Values = Record<EnquiryField, string>;
 type Errors = Partial<Record<EnquiryField, string>>;
 
-const EMPTY: Values = { name: "", phone: "", preparingFor: "", reason: "" };
-const ORDER: EnquiryField[] = ["name", "phone", "preparingFor", "reason"];
+const EMPTY: Values = { name: "", phone: "", location: "", preparingFor: "" };
+const ORDER: EnquiryField[] = ["name", "phone", "location", "preparingFor"];
 const EXAMS = ["MPSC", "UPSC", "NEET", "JEE", "Banking", "SSC", "Police Bharti"];
 const OTHER = "Other";
-const REASON_MAX = 500;
 
-function check(values: Values): Errors {
+// `otherBlank`: "Other" is ticked but nothing typed in its box yet.
+function check(values: Values, otherBlank: boolean): Errors {
   const result = enquirySchema.safeParse(values);
-  if (result.success) return {};
-  const fields = z.flattenError(result.error).fieldErrors as Partial<Record<EnquiryField, string[]>>;
-  return Object.fromEntries(ORDER.filter((k) => fields[k]?.length).map((k) => [k, fields[k]![0]]));
+  const fields = (result.success ? {} : z.flattenError(result.error).fieldErrors) as Partial<Record<EnquiryField, string[]>>;
+  const errors: Errors = Object.fromEntries(ORDER.filter((k) => fields[k]?.length).map((k) => [k, fields[k]![0]]));
+  if (otherBlank) errors.preparingFor = "Type the exam you’re preparing for";
+  return errors;
 }
 
 // Chosen exams plus the "Other" text, e.g. "MPSC, UPSC, CA Foundation".
@@ -49,7 +49,7 @@ export function EnquiryForm() {
   const payload: Values = { ...values, preparingFor: combineExams(exams, values.preparingFor) };
 
   // Errors show once a field has been left (or on submit), then update as you type.
-  const errors = check(payload);
+  const errors = check(payload, exams.includes(OTHER) && !values.preparingFor.trim());
   const errorFor = (k: EnquiryField) => (touched[k] ? errors[k] : undefined) ?? serverErrors[k];
 
   const field = (k: EnquiryField) => ({
@@ -73,10 +73,11 @@ export function EnquiryForm() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setTouched({ name: true, phone: true, preparingFor: true, reason: true });
+    setTouched({ name: true, phone: true, location: true, preparingFor: true });
     const firstInvalid = ORDER.find((k) => errors[k]);
     if (firstInvalid) {
-      document.getElementById(`enquiry-${firstInvalid}`)?.focus();
+      // The exam picker has no text box unless "Other" is ticked.
+      (document.getElementById(`enquiry-${firstInvalid}`) ?? document.getElementById("enquiry-exams"))?.focus();
       return;
     }
 
@@ -137,8 +138,23 @@ export function EnquiryForm() {
       </div>
 
       <div className="sm:col-span-2">
+        <label htmlFor="enquiry-location" className="block text-caption text-ink-soft">
+          Where do you live?
+        </label>
+        <input
+          {...field("location")}
+          required
+          autoComplete="address-level3"
+          maxLength={80}
+          placeholder="Your area, for example Dhanori, Viman Nagar or Lohegaon"
+          className={fieldClass}
+        />
+        <FieldError id="enquiry-location-error" message={errorFor("location")} />
+      </div>
+
+      <div className="sm:col-span-2">
         <span id="enquiry-exams-label" className="block text-caption text-ink-soft">
-          What are you preparing for? <span className="text-ink-soft/80">(optional, choose any)</span>
+          What are you preparing for? <span className="text-ink-soft/80">(choose one or more)</span>
         </span>
         <ExamSelect
           id="enquiry-exams"
@@ -165,25 +181,6 @@ export function EnquiryForm() {
           )}
         </AnimatePresence>
         <FieldError id="enquiry-preparingFor-error" message={errorFor("preparingFor")} />
-      </div>
-
-      <div className="sm:col-span-2">
-        <label htmlFor="enquiry-reason" className="block text-caption text-ink-soft">
-          Why do you want to join? <span className="text-ink-soft/80">(optional)</span>
-        </label>
-        <textarea
-          {...field("reason")}
-          rows={3}
-          maxLength={REASON_MAX}
-          placeholder="For example: I need a quiet place to study after college."
-          className={cn(fieldClass, "resize-none")}
-        />
-        <div className="mt-1 flex justify-between gap-4">
-          <FieldError id="enquiry-reason-error" message={errorFor("reason")} />
-          <span className="ml-auto text-caption text-ink-soft tabular-nums">
-            {values.reason.length}/{REASON_MAX}
-          </span>
-        </div>
       </div>
 
       {/* Hidden from people; spam bots fill it in and get quietly ignored. */}

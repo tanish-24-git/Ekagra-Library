@@ -115,7 +115,10 @@ export const enquiries = pgTable("enquiries", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
+  // Where the student lives, typed in by them (e.g. "Dhanori").
+  location: text("location"),
   preparingFor: text("preparing_for"),
+  // No longer asked; kept for enquiries sent before the form changed.
   reason: text("reason"),
   status: enquiryStatusEnum("status").default("new").notNull(),
   ...timestamps,

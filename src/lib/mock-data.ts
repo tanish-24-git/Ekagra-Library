@@ -21,10 +21,10 @@ const seeds: Seed[] = [
   ["Tejas Chavan", "9370012876", "mpsc_combined", "B-09", 9, 1200],
 ];
 
-const enquirySeeds: [string, string, string | null, string | null, number][] = [
-  ["Mayur Kale", "9823344556", "MPSC Rajyaseva", "My room is too noisy to study in. I want a desk near a window.", 0],
-  ["Shruti Ghorpade", "7709123456", "NEET 2027", null, 1],
-  ["Ganesh Thorat", "9011223344", null, "Friends recommended it. I’d like to visit first.", 3],
+const enquirySeeds: [string, string, string, string, number][] = [
+  ["Mayur Kale", "9823344556", "Dhanori", "MPSC", 0],
+  ["Shruti Ghorpade", "7709123456", "Lohegaon", "NEET", 1],
+  ["Ganesh Thorat", "9011223344", "Dhanori", "UPSC, MPSC", 3],
 ];
 
 const isoDay = (offsetDays: number) => {
@@ -58,12 +58,13 @@ export function buildMockStudents(): StudentRecord[] {
 }
 
 export function buildMockEnquiries(): EnquiryRecord[] {
-  return enquirySeeds.map(([name, phone, preparingFor, reason, daysAgo], i) => ({
+  return enquirySeeds.map(([name, phone, location, preparingFor, daysAgo], i) => ({
     id: `mock-enq-${i + 1}`,
     name,
     phone,
+    location,
     preparingFor,
-    reason,
+    reason: null,
     status: "new",
     createdAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
   }));
