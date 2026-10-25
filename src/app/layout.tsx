@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Mukta, Tiro_Devanagari_Marathi } from "next/font/google";
-import { site } from "@/content/site";
+import { photos } from "@/content/images";
+import { seo, site } from "@/content/site";
+import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 const tiro = Tiro_Devanagari_Marathi({
@@ -18,19 +20,44 @@ const mukta = Mukta({
   display: "swap",
 });
 
+const shareImage = { url: photos.readingHall.src, width: photos.readingHall.width, height: photos.readingHall.height, alt: photos.readingHall.alt };
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: `${site.fullName}, ${site.city}`,
-    template: `%s | ${site.fullName}`,
+    default: `${seo.title} | ${site.name}`,
+    template: `%s | ${site.name}`,
   },
   description: site.description,
+  keywords: seo.keywords,
+  applicationName: site.name,
+  category: "education",
   openGraph: {
-    title: site.fullName,
+    siteName: site.name,
+    title: `${site.name}: ${seo.title}`,
     description: site.description,
-    images: ["/images/library/reading-hall.jpg"],
+    url: "/",
+    images: [shareImage],
     locale: "en_IN",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${site.name}: ${seo.title}`,
+    description: site.description,
+    images: [shareImage],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
+  // Location tags some search engines and map services still read.
+  other: {
+    "geo.region": "IN-MH",
+    "geo.placename": `${site.area}, ${site.city}`,
+    "geo.position": `${site.geo.latitude};${site.geo.longitude}`,
+    ICBM: `${site.geo.latitude}, ${site.geo.longitude}`,
   },
 };
 

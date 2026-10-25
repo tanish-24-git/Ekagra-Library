@@ -9,7 +9,7 @@ export function Facilities() {
         <div className="md:col-span-5">
           <div className="md:sticky md:top-28">
             <h2 id="facilities-title" className="font-display text-h2 tracking-[-0.015em]">
-              What you’ll find here
+              Facilities at the library
             </h2>
             <p className="mt-5 max-w-[34ch] text-lead text-ink-soft">
               The basics, done properly, so nothing pulls you away from the page.

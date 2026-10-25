@@ -7,7 +7,7 @@ export function Footer() {
       <div className="mx-auto max-w-[1440px] px-5 pt-20 pb-10 md:px-10">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <h2 className="text-caption text-ink/75">Visit</h2>
+            <h2 className="text-caption text-ink/75">Address</h2>
             <address className="mt-3 not-italic">
               {site.address.map((line) => (
                 <span key={line} className="block">
@@ -52,6 +52,9 @@ export function Footer() {
             © {site.copyrightYear} {site.fullName}
             <span lang="mr" className="ml-3">
               {site.marathiName}
+            </span>
+            <span className="mt-1 block md:mt-0 md:ml-3 md:inline">
+              Study library in {site.area}, {site.city} for UPSC, MPSC, NEET and JEE.
             </span>
           </span>
           <a href="#top" className="link-quiet">

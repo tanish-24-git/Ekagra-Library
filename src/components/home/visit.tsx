@@ -7,7 +7,7 @@ export function Visit() {
       <div className="mx-auto grid max-w-[1440px] gap-16 px-5 py-28 md:grid-cols-12 md:gap-6 md:px-10 md:py-40">
         <div className="md:col-span-4">
           <h2 id="visit-title" className="font-display text-h2 tracking-[-0.015em]">
-            Visit the library
+            Visit the library in {site.area}
           </h2>
           <p className="mt-5 max-w-[32ch] text-lead text-ink-soft">
             Come and see the hall, or send an enquiry and we’ll call you back.

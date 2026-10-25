@@ -72,8 +72,13 @@ export function HeroArch() {
           className="relative mx-auto flex h-full max-w-[1440px] flex-col px-5 pt-24 md:justify-end md:px-10 md:pt-0 md:pb-[12svh]"
         >
           <div className="md:max-w-[46vw]">
-            <h1 id="hero-title" className="font-display text-h1 tracking-[-0.02em] text-balance">
-              A quiet seat for the long preparation.
+            <h1 id="hero-title">
+              <span className="block text-body text-ink-soft">
+                {site.name}, a study library in {site.area}, {site.city}
+              </span>{" "}
+              <span className="mt-3 block font-display text-h1 tracking-[-0.02em] text-balance">
+                A quiet seat for the long preparation.
+              </span>
             </h1>
             <p className="mt-5 max-w-[38ch] text-lead text-ink-soft md:mt-6">
               A peaceful study library for MPSC, UPSC, NEET, JEE and every competitive exam.

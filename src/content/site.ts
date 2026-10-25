@@ -7,7 +7,7 @@ export const site = {
   fullName: "Ekagra Library",
   marathiName: "एकाग्र अभ्यासिका",
   description:
-    "A peaceful study library in Lohegaon, Pune for MPSC, UPSC, NEET, JEE and every competitive exam. Open all 7 days, 8 am to 9 pm, with no holidays. Reserve your desk or sit anywhere.",
+    "Peaceful study library (abhyasika) in Lohegaon, Pune for UPSC, MPSC, NEET and JEE students. Open 7 days, 8 am to 9 pm. Wi-Fi, CCTV, parking, reserved desks.",
   area: "Lohegaon",
   city: "Pune",
   address: ["Royal Heights, Sr. No. 285, 3/4", "Porwal Sathe Wasti Road, opposite Gini Bellina", "Kutwal Colony, Lohegaon, Pune 411047"],
@@ -19,6 +19,44 @@ export const site = {
   copyrightYear: 2026,
   hours: "8:00 am to 9:00 pm",
   days: "Open all 7 days. No holidays.",
+  opens: "08:00",
+  closes: "21:00",
+  // Google Maps listing (place ID 0x3bc2c7b373b81c73:0x79b28d4e71ed84c5).
+  mapsUrl: "https://maps.google.com/?cid=8769226792502133957",
+  geo: { latitude: 18.6019402, longitude: 73.9125204 },
+  postalAddress: {
+    streetAddress: "Royal Heights, Sr. No. 285, 3/4, Porwal Sathe Wasti Road, opposite Gini Bellina, Kutwal Colony",
+    addressLocality: "Lohegaon, Pune",
+    addressRegion: "Maharashtra",
+    postalCode: "411047",
+    addressCountry: "IN",
+  },
+};
+
+// Search: what people type to find a study library around Lohegaon. Used in
+// page titles, meta keywords and structured data; visible copy stays natural.
+export const seo = {
+  title: "Study Library in Lohegaon, Pune for UPSC & MPSC",
+  updated: "2026-10-25",
+  keywords: [
+    "study library in Lohegaon",
+    "library in Lohegaon",
+    "abhyasika in Lohegaon",
+    "अभ्यासिका लोहगाव",
+    "study library in Pune",
+    "self study library Pune",
+    "reading room in Lohegaon",
+    "UPSC study library Pune",
+    "MPSC study library Pune",
+    "MPSC abhyasika Pune",
+    "NEET study library Pune",
+    "JEE study library Pune",
+    "competitive exam library Lohegaon",
+    "study library near Porwal Road",
+    "study library Kutwal Colony",
+    "library open 7 days Pune",
+    "Pune 411047",
+  ],
 };
 
 export const nav = [
@@ -56,11 +94,15 @@ export const day: DayMoment[] = [
 ];
 
 export const faqs: { q: string; a: string }[] = [
+  {
+    q: "Where is Ekagra Library?",
+    a: `Ekagra Library is a study library in ${site.area}, ${site.city}: ${site.address.join(", ")}.`,
+  },
   { q: "What are the timings?", a: `Every day, ${site.hours}.` },
   { q: "Are you open on Sundays and holidays?", a: "Yes. The library is open all 7 days of the week, with no holidays." },
   { q: "Can I reserve a desk?", a: "Yes. Reserve your own desk and keep it every day, or skip the reservation and sit at any free seat." },
-  { q: "Which exams do students here prepare for?", a: "MPSC, UPSC, NEET, JEE and every other competitive exam." },
+  { q: "Which exams do students here prepare for?", a: "Students here prepare for UPSC, MPSC, NEET, JEE and every other competitive exam." },
   { q: "Is it safe?", a: "The library has CCTV cameras, and separate toilets and bathrooms for men and women." },
-  { q: "Is there Wi-Fi and parking?", a: "Yes, both." },
+  { q: "Is there Wi-Fi and parking?", a: "Yes. The library has Wi-Fi for online lectures and mock tests, and parking is available." },
   { q: "How do I join?", a: `Visit us, call ${site.phone}, or send an enquiry using the form below and we’ll call you back.` },
 ];

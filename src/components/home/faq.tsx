@@ -5,7 +5,7 @@ export function Faq() {
     <section aria-labelledby="faq-title" className="mx-auto max-w-[1440px] px-5 pb-28 md:px-10 md:pb-36">
       <div className="grid gap-12 md:grid-cols-12 md:gap-6">
         <h2 id="faq-title" className="font-display text-h2 tracking-[-0.015em] md:col-span-4">
-          Questions
+          Questions about the library
         </h2>
         <div className="md:col-span-7 md:col-start-6">
           {faqs.map((item) => (

@@ -1,7 +1,9 @@
+import { JsonLd } from "@/components/seo/json-ld";
 import { Footer } from "@/components/site/footer";
 import { FooterReveal } from "@/components/site/footer-reveal";
 import { Header } from "@/components/site/header";
 import { SmoothScroll } from "@/components/site/smooth-scroll";
+import { libraryJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
 export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
@@ -21,6 +23,8 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
         <Footer />
       </FooterReveal>
       <div className="grain" aria-hidden />
+      <JsonLd id="library" data={libraryJsonLd()} />
+      <JsonLd id="website" data={websiteJsonLd()} />
     </>
   );
 }

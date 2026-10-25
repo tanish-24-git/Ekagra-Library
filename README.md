@@ -72,6 +72,20 @@ npm run db:studio     # browse data
 - **Gallery:** the library's own photos and video. Put new photos in `photos-inbox/` and run `npm run photos:import`. The script resizes them, strips EXIF data (including GPS) and writes `src/content/gallery-photos.json`. Then add a caption for each new file in `src/content/gallery.ts`.
 - **Homepage:** CC0 (public domain) stock photos of reading rooms from Wikimedia Commons, listed in `src/content/images.ts`. Use only CC0 or public-domain photos here, because the site no longer has a credits page.
 
+## Search (SEO)
+
+- Titles, descriptions, keywords and the library's address, hours and map pin are in `src/content/site.ts` (`site` and `seo`).
+- Structured data (schema.org JSON-LD) is built in `src/lib/structured-data.ts`: Library and WebSite on every page, FAQPage on the homepage, BreadcrumbList and ImageGallery on the gallery.
+- `sitemap.xml` lists the pages with their images and video, `robots.txt` points to it, and `/llms.txt` is a plain-text summary for AI assistants.
+- Every page has one `<h1>` with the library's name and area, then `<h2>` sections and `<h3>` items.
+
+At launch:
+
+1. Set `NEXT_PUBLIC_SITE_URL` to the real domain so canonical links, the sitemap and structured data use it.
+2. Add the site to Google Search Console and Bing Webmaster Tools, and submit `https://your-site/sitemap.xml`.
+3. Claim the Google Maps listing (Google Business Profile). Make its name, address and phone match the site exactly, choose the "Library" category, add photos and ask students for reviews. This matters most for "study library in Lohegaon" searches on Maps.
+4. Check the structured data with https://search.google.com/test/rich-results.
+
 ## Where things are
 
 ```
