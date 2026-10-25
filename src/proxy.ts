@@ -1,10 +1,15 @@
+import { NEON_AUTH_SESSION_COOKIE_NAME } from "@neondatabase/auth/server";
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE, adminMode, adminSlug, verifySession } from "@/lib/admin-session";
+import { adminMode, adminSlug } from "@/lib/admin-session";
 
 // Keeps the admin out of sight (see adminMode in src/lib/admin-session.ts):
-//  - In development without admin settings, /admin simply works.
-//  - Otherwise /admin answers 404 and the admin is served from a secret path
-//    (ADMIN_PATH) behind a login. Admin API routes answer 404 without a session.
+//  - In development without sign-in settings, /admin simply works.
+//  - With sign-in set up, admin pages need a Neon Auth session; without one
+//    they redirect to the login page and admin API routes answer 404. This is
+//    a quick cookie check: pages and handlers verify the session and the
+//    email allowlist themselves (src/lib/admin-guard.ts).
+//  - With ADMIN_PATH set, /admin answers 404 and the admin is served from
+//    that secret path instead.
 //  - Admin responses are marked noindex and never cached.
 
 const ADMIN_API = [/^\/api\/students(\/|$)/, /^\/api\/seats\/?$/, /^\/api\/enquiries\/?$/];
@@ -21,9 +26,10 @@ function private_(response: NextResponse) {
   return response;
 }
 
-export async function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const mode = adminMode();
+  const slug = adminSlug();
   const isAdminFolder = pathname === "/admin" || pathname.startsWith("/admin/");
   // The public enquiry form posts to /api/enquiries.
   const isAdminApi = ADMIN_API.some((re) => re.test(pathname)) && !(pathname.startsWith("/api/enquiries") && request.method === "POST");
@@ -32,23 +38,16 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/admin/login") return NextResponse.redirect(new URL("/admin", request.url));
     return isAdminFolder ? private_(NextResponse.next()) : NextResponse.next();
   }
+  if (mode === "off" || !slug) return isAdminFolder || isAdminApi ? hidden(request) : NextResponse.next();
 
-  const signedIn = () => verifySession(request.cookies.get(SESSION_COOKIE)?.value);
+  const hasSession = request.cookies.has(NEON_AUTH_SESSION_COOKIE_NAME);
+  if (isAdminApi) return hasSession ? NextResponse.next() : hidden(request);
+  if (isAdminFolder && slug !== "admin") return hidden(request);
+  if (pathname !== `/${slug}` && !pathname.startsWith(`/${slug}/`)) return NextResponse.next();
 
-  if (isAdminFolder) return hidden(request);
-  if (isAdminApi) return (await signedIn()) ? NextResponse.next() : hidden(request);
-
-  const slug = adminSlug();
-  if (slug && (pathname === `/${slug}` || pathname.startsWith(`/${slug}/`))) {
-    const rest = pathname.slice(slug.length + 1);
-    const isLogin = rest === "/login";
-    const ok = await signedIn();
-    if (!ok && !isLogin) return NextResponse.redirect(new URL(`/${slug}/login`, request.url));
-    if (ok && isLogin) return NextResponse.redirect(new URL(`/${slug}`, request.url));
-    return private_(NextResponse.rewrite(new URL(`/admin${rest}${search}`, request.url)));
-  }
-
-  return NextResponse.next();
+  const rest = pathname.slice(slug.length + 1);
+  if (!hasSession && rest !== "/login") return NextResponse.redirect(new URL(`/${slug}/login`, request.url));
+  return private_(slug === "admin" ? NextResponse.next() : NextResponse.rewrite(new URL(`/admin${rest}${search}`, request.url)));
 }
 
 export const config = {

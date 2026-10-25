@@ -39,7 +39,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       </header>
       {open && (
         <p className="border-b border-rule bg-paper px-5 py-2 text-center text-caption text-ink-soft">
-          Development mode: the admin is open at /admin with no login. On the live site it needs ADMIN_PATH and a password (see README).
+          Development mode: the admin is open with no login. To require sign-in, set NEON_AUTH_BASE_URL, NEON_AUTH_COOKIE_SECRET and ADMIN_EMAILS (see README).
         </p>
       )}
       <main className="mx-auto max-w-[1280px] px-5 py-10 md:px-8 md:py-14">{children}</main>

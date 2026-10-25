@@ -23,41 +23,52 @@ Open the admin at **http://localhost:3000/admin**. In development it opens witho
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Public URL, used for social previews, `robots.txt` and the sitemap. |
 | `DATABASE_URL` | Neon connection string. Leave empty to use sample data. |
-| `ADMIN_PATH` | Secret address of the admin, e.g. `desk-7fq2k9` serves it at `/desk-7fq2k9`. |
-| `ADMIN_PASSWORD` | Admin password. |
-| `ADMIN_SESSION_SECRET` | Long random string used to sign admin sessions. |
+| `NEON_AUTH_BASE_URL` | Neon Auth address (Neon console > your project > Auth). |
+| `NEON_AUTH_COOKIE_SECRET` | Random string of at least 32 characters that signs the sign-in cookies. |
+| `ADMIN_EMAILS` | Who may sign in to the admin, comma-separated, e.g. `owner@gmail.com,helper@gmail.com`. |
+| `ADMIN_PATH` | Optional secret address of the admin, e.g. `desk-7fq2k9` serves it at `/desk-7fq2k9` and makes `/admin` a 404. |
 | `DOCUMENTS_KEY` | 64 hex characters that encrypt ID numbers and documents. Keep a backup: without it they can't be read. |
 
-To generate the three admin values:
+To generate a cookie secret, a documents key and a secret path:
 
 ```bash
-node -e "const c=require('crypto');console.log('desk-'+c.randomBytes(5).toString('hex'), c.randomBytes(12).toString('base64url'), c.randomBytes(32).toString('hex'))"
+node -e "const c=require('crypto');console.log(c.randomBytes(36).toString('base64url'), c.randomBytes(32).toString('hex'), 'desk-'+c.randomBytes(5).toString('hex'))"
 ```
 
 ## Opening the admin
 
-| Where | Admin settings | How to open it |
-| --- | --- | --- |
-| Your computer (`npm run dev`) | empty | `http://localhost:3000/admin`, no login |
-| Your computer or the live site | all three set | `https://your-site/<ADMIN_PATH>`, then sign in with `ADMIN_PASSWORD` |
-| Live site (`npm run build && npm start`, or any host) | empty | Admin is switched off: every admin URL answers 404 |
+Sign-in uses Neon Auth (Better Auth, hosted by Neon): email and password, or Continue with Google.
 
-For the live site: set the three `ADMIN_*` variables in your host's environment settings, deploy, then open `https://your-site/<ADMIN_PATH>` and bookmark it. Nothing on the public site links to it.
+| Where | Settings | How to open it |
+| --- | --- | --- |
+| Your computer (`npm run dev`) | `ADMIN_EMAILS` empty | `http://localhost:3000/admin`, no login |
+| Your computer or the live site | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` and `ADMIN_EMAILS` set | `/admin` (or `/<ADMIN_PATH>` if set), then sign in |
+| Live site without those settings | | Admin is switched off: every admin URL answers 404 |
+
+First time: open the admin's login page, choose **Create your admin account**, and use an address from `ADMIN_EMAILS`. Or choose **Continue with Google** with that address. Accounts can only be created from this page and only for listed addresses.
+
+For the live site:
+
+1. Set the variables above in your host's environment settings and deploy.
+2. In the Neon console, under Auth, add the live site's address to the trusted domains.
+3. Google sign-in uses Neon's shared Google credentials, which are meant for development. For the live site, add your own Google OAuth client in the Neon console.
+4. Open the admin, create your account and bookmark the page. Nothing on the public site links to it.
 
 ## How the admin stays hidden
 
-When the admin settings are present:
+When sign-in is set up:
 
-- `/admin` always answers 404, signed in or not. The admin is served only from `ADMIN_PATH`.
-- Every admin page needs a login. Sessions are HMAC-signed, httpOnly, SameSite=Strict cookies that last 12 hours.
-- Wrong passwords are slowed down and locked out after five tries for 15 minutes.
+- Every admin page needs a Neon Auth session whose email is in `ADMIN_EMAILS`. Signed-in accounts that aren't on the list are treated as signed out.
+- With `ADMIN_PATH` set, `/admin` always answers 404 and the admin is served only from the secret path.
+- Wrong sign-ins are slowed down and locked out after five tries for 15 minutes; Neon Auth adds its own limits.
+- Public sign-up is closed: `/api/auth/sign-up` answers 404.
 - Admin API routes (`/api/students`, `/api/seats`, `GET /api/enquiries`) answer 404 without a session.
 - Admin responses send `X-Robots-Tag: noindex`. `robots.txt` deliberately doesn't mention the admin, because that would advertise it.
-- The proxy (`src/proxy.ts`) does these checks, and each admin page, action and API handler repeats them.
+- The proxy (`src/proxy.ts`) checks for the session cookie; each admin page, action and API handler verifies the session and the email list (`src/lib/admin-guard.ts`).
 
 Changing `ADMIN_PATH` needs a rebuild, because the admin's links are rendered at build time.
 
-On an office network that inspects HTTPS (Node errors like `fetch failed` or `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`), start Node with the system certificates: `$env:NODE_OPTIONS="--use-system-ca"; npm run dev` in PowerShell.
+On an office network that inspects HTTPS, Node can't reach Neon (`fetch failed`). `npm run dev` already trusts the operating system's certificates (`src/instrumentation.ts`). For other Node commands, such as `npm run db:push`, start them with `$env:NODE_OPTIONS="--use-system-ca"` in PowerShell.
 
 ## ID documents
 

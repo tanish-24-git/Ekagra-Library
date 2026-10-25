@@ -1,57 +1,83 @@
 "use server";
-import { createHash, timingSafeEqual } from "node:crypto";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/admin-guard";
-import { SESSION_COOKIE, SESSION_HOURS, adminHref, createSession } from "@/lib/admin-session";
 import type { DocumentKind } from "@/db/schema";
+import { requireAdmin } from "@/lib/admin-guard";
+import { adminEmails, adminHref } from "@/lib/admin-session";
+import { auth } from "@/lib/auth";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "@/lib/documents";
 import { createStudent, revealIdNumber, type NewDocument } from "@/lib/students";
 import { createStudentSchema } from "@/lib/validation";
 
-// Wrong passwords: five tries per IP, then a 15-minute lockout. Kept in
+// Wrong sign-ins: five tries per IP, then a 15-minute lockout. Kept in
 // memory, so it resets on restart and isn't shared between server instances.
+// Neon Auth adds its own rate limits on top.
 const MAX_TRIES = 5;
 const LOCKOUT_MS = 15 * 60_000;
 const failures = new Map<string, { count: number; until: number }>();
 
-const digest = (value: string) => createHash("sha256").update(value).digest();
+// email and name come back so the form keeps them after an error.
+export type LoginState = { error?: string; notice?: string; email?: string; name?: string };
 
-export type LoginState = { error?: string };
+const credentials = (formData: FormData) => ({
+  email: String(formData.get("email") ?? "").trim().toLowerCase(),
+  password: String(formData.get("password") ?? ""),
+});
 
-export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
+export async function signIn(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  if (!auth) return { error: "Admin sign-in isn’t set up yet. See README: Opening the admin." };
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   const now = Date.now();
   const record = failures.get(ip);
   if (record && record.count >= MAX_TRIES && record.until > now) {
-    return { error: "Too many wrong passwords. Try again in 15 minutes." };
+    return { error: "Too many wrong sign-ins. Try again in 15 minutes.", email: String(formData.get("email") ?? "") };
   }
 
-  const expected = process.env.ADMIN_PASSWORD ?? "";
-  const given = String(formData.get("password") ?? "");
-  const ok = expected.length > 0 && timingSafeEqual(digest(given), digest(expected));
+  const { email, password } = credentials(formData);
+  // Addresses outside ADMIN_EMAILS get the same answer as a wrong password.
+  const result = adminEmails().includes(email) ? await auth.signIn.email({ email, password }) : null;
 
-  if (!ok) {
+  if (!result || result.error) {
     const count = record && record.until > now ? record.count + 1 : 1;
     failures.set(ip, { count, until: now + LOCKOUT_MS });
     await new Promise((r) => setTimeout(r, 800));
-    return { error: "That password isn’t right. Check it and try again." };
+    return { error: "That email and password don’t match an admin account.", email };
   }
 
   failures.delete(ip);
-  (await cookies()).set(SESSION_COOKIE, await createSession(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: SESSION_HOURS * 3600,
-  });
+  redirect(adminHref());
+}
+
+// First-time setup: an address listed in ADMIN_EMAILS chooses its password.
+export async function createAdminAccount(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  if (!auth) return { error: "Admin sign-in isn’t set up yet. See README: Opening the admin." };
+  const { email, password } = credentials(formData);
+  const name = String(formData.get("name") ?? "").trim() || email.split("@")[0];
+
+  if (!adminEmails().includes(email)) {
+    return { error: "This email isn’t on the admin list. Add it to ADMIN_EMAILS first, then try again.", email, name };
+  }
+  if (password.length < 10) return { error: "Use at least 10 characters for the password.", email, name };
+
+  const { data, error } = await auth.signUp.email({ email, password, name });
+  if (error) {
+    return {
+      error: /exist/i.test(error.message ?? "")
+        ? "There’s already an account for this email. Sign in instead."
+        : `Couldn’t create the account: ${error.message ?? "unknown error"}.`,
+      email,
+      name,
+    };
+  }
+
+  // Without a session token the project wants the email verified first.
+  if (!data?.token) return { notice: "Account created. Check your inbox for the verification email, then sign in." };
   redirect(adminHref());
 }
 
 export async function logout() {
-  (await cookies()).delete(SESSION_COOKIE);
+  await auth?.signOut();
   redirect("/");
 }
 
