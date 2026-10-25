@@ -48,7 +48,9 @@ Sign-in uses Neon Auth (Better Auth, hosted by Neon): email and password, or Con
 | Your computer or the live site | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` and `ADMIN_EMAILS` set | `/admin` (or `/<ADMIN_PATH>` if set), then sign in |
 | Anywhere with a real database but without those settings | | Admin is switched off: every admin URL answers 404 |
 
-The login page has no sign-up. To add an admin, put their email in `ADMIN_EMAILS`, then run `npm run admin:create -- them@gmail.com "Their name"` in the project folder. It prints a temporary password; they sign in and change it under **Change password** in the admin. Or they can use **Continue with Google** with a listed address.
+The login page has no sign-up. To add an admin, put their email in `ADMIN_EMAILS`, then run `npm run admin:create -- them@gmail.com "Their name"` in the project folder. It prints a temporary password; they sign in and change it under **Email and password** in the admin. Or they can use **Continue with Google** with a listed address.
+
+Under **Email and password**, an admin can change their sign-in email (confirmed with their password) as well as their password. Either change signs out their other devices at once. After an email change the account is recorded in the `admins` table, so it keeps access without editing `ADMIN_EMAILS`, and the old address stops counting even though it's still listed. Update `ADMIN_EMAILS` afterwards anyway to keep the settings tidy.
 
 For the live site:
 
@@ -61,7 +63,7 @@ For the live site:
 
 When sign-in is set up:
 
-- Every admin page needs a Neon Auth session whose email is in `ADMIN_EMAILS`. Signed-in accounts that aren't on the list are treated as signed out.
+- Every admin page needs a live Neon Auth session (checked against the database on each request, so ended sessions stop at once) for an account whose email is in `ADMIN_EMAILS`, or that is recorded in the `admins` table after changing its email. Other signed-in accounts are treated as signed out.
 - With `ADMIN_PATH` set, `/admin` always answers 404 and the admin is served only from the secret path.
 - Wrong sign-ins are slowed down and locked out after five tries for 15 minutes; Neon Auth adds its own limits.
 - Public sign-up is closed: the login page has none and `/api/auth/sign-up` answers 404. Admin accounts are made with `npm run admin:create`. To close sign-up at Neon too, turn off sign-up under Auth in the Neon console after creating your accounts.
