@@ -28,7 +28,7 @@ async function Account() {
       {user ? (
         <ChangePasswordForm />
       ) : (
-        <p className="text-ink-soft">Passwords apply once sign-in is set up (ADMIN_EMAILS in .env.local).</p>
+        <p className="text-ink-soft">Passwords apply once sign-in is set up (ADMIN_EMAILS in .env).</p>
       )}
     </>
   );

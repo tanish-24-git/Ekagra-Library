@@ -3,7 +3,7 @@
 //
 //   npm run admin:create -- you@gmail.com "Your name"
 //
-// The email must also be in ADMIN_EMAILS (.env.local and the live host) to
+// The email must also be in ADMIN_EMAILS (.env, here and on the live host) to
 // open the admin. Change the password after the first sign-in (Change
 // password in the admin).
 import { randomBytes } from "node:crypto";
@@ -16,7 +16,7 @@ if (!email || !email.includes("@")) {
 
 const base = (process.env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
 if (!base) {
-  console.error("NEON_AUTH_BASE_URL isn't set in .env.local.");
+  console.error("NEON_AUTH_BASE_URL isn't set in .env.");
   process.exit(1);
 }
 

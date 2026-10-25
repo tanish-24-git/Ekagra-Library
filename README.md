@@ -11,7 +11,7 @@ Built with Next.js 16 (App Router, Cache Components), React 19, Tailwind CSS v4,
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in the values (see below)
+cp .env.example .env         # then fill in the values (see below)
 npm run dev                  # http://localhost:3000
 ```
 
@@ -21,7 +21,7 @@ Open the admin at **http://localhost:3000/admin**. In development it opens witho
 
 | Variable | What it does |
 | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Public URL, used for social previews, `robots.txt` and the sitemap. |
+| `NEXT_PUBLIC_SITE_URL` | Optional override for the site address. By default it's localhost on your computer and the Vercel address (or your domain) when live. |
 | `DATABASE_URL` | Neon connection string. Leave empty to use sample data. |
 | `NEON_AUTH_BASE_URL` | Neon Auth address (Neon console > your project > Auth). |
 | `NEON_AUTH_COOKIE_SECRET` | Random string of at least 32 characters that signs the sign-in cookies. |
@@ -130,10 +130,10 @@ Scheduling: `vercel.json` sets this up on Vercel (set `CRON_SECRET` there and Ve
 ## Deploying to Vercel
 
 1. vercel.com/new → import this repository (Next.js is detected; keep the default build settings).
-2. Copy `.env.production.example` somewhere private, fill in every value, and paste the whole text into Environment Variables → Key (Production). Vercel splits it into variables.
-3. Deploy, set `NEXT_PUBLIC_SITE_URL` to the live address and redeploy.
+2. Paste your whole `.env` into Environment Variables → Key (Production). Vercel splits it into variables. The same file works on your computer and live; the site address is worked out automatically.
+3. Deploy.
 4. In the Neon console → Auth, add the live address to the trusted domains.
-5. `DOCUMENTS_KEY` must be identical to your local one, or saved ID numbers and documents can't be read.
+5. Your admin password lives in Neon Auth, so it's the same locally and live. `DOCUMENTS_KEY` must stay identical everywhere, or saved ID numbers and documents can't be read.
 
 Daily fee reminders run by themselves (`vercel.json`, 9:00 IST). A step-by-step guide for Gmail, WhatsApp, Google Forms and Vercel is kept outside the repository (`docs/Ekagra-Library-setup-guide.pdf` on the owner's computer).
 
@@ -164,7 +164,7 @@ npm run db:studio     # browse data
 
 At launch:
 
-1. Set `NEXT_PUBLIC_SITE_URL` to the real domain so canonical links, the sitemap and structured data use it.
+1. Add your domain in Vercel (Settings → Domains). Canonical links, the sitemap and structured data switch to it by themselves.
 2. Add the site to Google Search Console and Bing Webmaster Tools, and submit `https://your-site/sitemap.xml`.
 3. Claim the Google Maps listing (Google Business Profile). Make its name, address and phone match the site exactly, choose the "Library" category, add photos and ask students for reviews. This matters most for "study library in Lohegaon" searches on Maps.
 4. Check the structured data with https://search.google.com/test/rich-results.
