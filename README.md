@@ -93,13 +93,29 @@ The Add student form takes the Aadhaar and PAN numbers and photos or PDFs of the
 
 ## Managing students
 
+Add student takes the name, primary and secondary mobile, email, address, what they study or where they work, the exam, the joining date, seat and fees, and ID details: Aadhaar, PAN and driving licence numbers plus photos of the student and their documents. ID details are all optional; add them later with Edit.
+
 On a student's page:
 
 - **Edit**: details, seat, monthly fee, ID numbers (blank keeps the saved one) and ID documents (a new file replaces the old one).
 - **Pause membership**: freezes it. No reminders go out while paused. **Resume membership** moves the end date on by the days it was paused.
 - **Mark as left**: keeps their history but takes them off the active list (the Status filter shows them). **Renew** brings them back.
 - **Delete**: removes the student, their memberships, payments, reminders and ID documents for good, after a confirmation.
-- **Remove** a saved Aadhaar or PAN number, or **Delete this file** for a single document.
+- **Remove** a saved Aadhaar, PAN or licence number, or **Delete this file** for a single document.
+
+The page also shows the time in the library ("1 year 2 months"), the next renewal date and the total paid.
+
+## Excel downloads
+
+**Download Excel** on the Students and Enquiries pages. The files have a bold yellow, frozen header row with filters, real dates and rupee amounts.
+
+- Students: everyone (active, paused, left) with contact details, address, seat, fees, joining and renewal dates, time in the library, total paid, and the full Aadhaar, PAN and licence numbers. Photos and document files are never included. Treat the file as confidential.
+- Enquiries: date, name, mobile, area, exam and status.
+- Deleted students are gone for good; use Mark as left to keep someone on record.
+
+## Enquiries and spam
+
+Name, mobile, area and exam are required. In the admin, set each enquiry's status (New, Contacted, Joined, Closed) or delete it. The form is protected by a hidden trap field, ignores forms sent within 3 seconds of opening, allows 3 enquiries an hour and 8 a day per connection (stored as a salted hash, not the IP), and doesn't store the same phone number twice in a week.
 
 ## Fees and reminders
 
