@@ -122,7 +122,7 @@ async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
       <ul className="mt-8 grid gap-6 sm:grid-cols-3">
         {DOCUMENT_KINDS.map((kind) => {
           const doc = documents.find((d) => d.kind === kind);
-          const src = `/api/students/${student.id}/documents/${kind}`;
+          const src = adminHref(`/students/${student.id}/documents/${kind}`);
           return (
             <li key={kind}>
               <p className="text-caption text-ink-soft">{documentLabels[kind]}</p>

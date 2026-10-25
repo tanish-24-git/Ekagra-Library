@@ -12,8 +12,8 @@ function key(): Buffer {
     if (k.length !== 32) throw new Error("DOCUMENTS_KEY must be 64 hex characters (32 bytes).");
     return k;
   }
-  if (process.env.NODE_ENV === "production") throw new Error("Set DOCUMENTS_KEY before storing ID documents.");
-  // Development only, so the admin works before the key is set.
+  if (process.env.NODE_ENV === "production" || process.env.DATABASE_URL) throw new Error("Set DOCUMENTS_KEY before storing ID documents.");
+  // Sample data only, so the admin works before the key is set.
   return createHash("sha256").update("ekagra-library-development-key").digest();
 }
 

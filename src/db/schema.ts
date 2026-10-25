@@ -19,6 +19,10 @@ const bytea = customType<{ data: Buffer; driverData: string | Buffer }>({
   fromDriver: (value) => (typeof value === "string" ? Buffer.from(value.replace(/^\\x/, ""), "hex") : Buffer.from(value)),
 });
 
+// Every table has row-level security on (.enableRLS()) with no policies. The site
+// connects as the tables' owner, which RLS doesn't restrict, so it works as
+// normal; any other role, such as Neon's Data API roles, sees no rows.
+
 // A member either keeps a reserved desk or sits at any free seat.
 export const seatingEnum = pgEnum("seating", ["reserved", "open"]);
 export const studentStatusEnum = pgEnum("student_status", ["active", "expired", "left"]);
@@ -52,7 +56,7 @@ export const seats = pgTable("seats", {
   id: serial("id").primaryKey(),
   number: text("number").notNull().unique(),
   ...timestamps,
-});
+}).enableRLS();
 
 export const students = pgTable("students", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -74,7 +78,7 @@ export const students = pgTable("students", {
   status: studentStatusEnum("status").default("active").notNull(),
   notes: text("notes"),
   ...timestamps,
-});
+}).enableRLS();
 
 export const memberships = pgTable("memberships", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -88,7 +92,7 @@ export const memberships = pgTable("memberships", {
   feeInr: integer("fee_inr").notNull(),
   discountInr: integer("discount_inr").default(0).notNull(),
   ...timestamps,
-});
+}).enableRLS();
 
 export const payments = pgTable("payments", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -102,7 +106,7 @@ export const payments = pgTable("payments", {
   receiptNo: text("receipt_no"),
   note: text("note"),
   ...timestamps,
-});
+}).enableRLS();
 
 export const enquiries = pgTable("enquiries", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -112,7 +116,7 @@ export const enquiries = pgTable("enquiries", {
   reason: text("reason"),
   status: enquiryStatusEnum("status").default("new").notNull(),
   ...timestamps,
-});
+}).enableRLS();
 
 // Photos or PDFs of a student's ID documents, one per kind, encrypted.
 export const studentDocuments = pgTable(
@@ -129,7 +133,7 @@ export const studentDocuments = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("student_documents_student_kind").on(t.studentId, t.kind)],
-);
+).enableRLS();
 
 // One row per reminder sent, so each membership is reminded once per kind.
 export const reminders = pgTable(
@@ -144,7 +148,7 @@ export const reminders = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [uniqueIndex("reminders_membership_kind").on(t.membershipId, t.kind)],
-);
+).enableRLS();
 
 export const studentsRelations = relations(students, ({ many }) => ({
   memberships: many(memberships),

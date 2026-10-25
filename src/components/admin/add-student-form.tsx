@@ -98,6 +98,7 @@ export function AddStudentForm() {
               file={files[kind]}
               onChange={(file) => setFiles((f) => ({ ...f, [kind]: file }))}
               serverError={err(`doc_${kind}`)}
+              attempt={state}
             />
           ))}
         </div>

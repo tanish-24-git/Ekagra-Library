@@ -7,7 +7,7 @@ import type { DocumentKind } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-guard";
 import { adminEmails, adminHref } from "@/lib/admin-session";
 import { auth } from "@/lib/auth";
-import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "@/lib/documents";
+import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES, matchesType } from "@/lib/documents";
 import { formatShortDate } from "@/lib/labels";
 import { runReminders, type ReminderRun } from "@/lib/reminders";
 import { createStudent, renewStudent, revealIdNumber, type NewDocument } from "@/lib/students";
@@ -100,7 +100,11 @@ export async function addStudent(_prev: AddStudentState, formData: FormData): Pr
     if (!(file instanceof File) || file.size === 0) continue;
     if (!DOCUMENT_TYPES.includes(file.type)) fields[`doc_${kind}`] = ["Upload a JPG, PNG, WebP or PDF file"];
     else if (file.size > MAX_DOCUMENT_BYTES) fields[`doc_${kind}`] = ["This file is over 4 MB. Upload a smaller photo"];
-    else documents.push({ kind, contentType: file.type, bytes: Buffer.from(await file.arrayBuffer()) });
+    else {
+      const bytes = Buffer.from(await file.arrayBuffer());
+      if (matchesType(file.type, bytes)) documents.push({ kind, contentType: file.type, bytes });
+      else fields[`doc_${kind}`] = ["This file isn’t a real JPG, PNG, WebP or PDF. Upload the photo or PDF again"];
+    }
   }
 
   const sharesId = Boolean(values.aadhaar?.trim() || values.pan?.trim() || documents.length);

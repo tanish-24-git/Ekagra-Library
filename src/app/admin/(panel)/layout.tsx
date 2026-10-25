@@ -1,9 +1,26 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import { logout } from "@/app/admin/actions";
 import { site } from "@/content/site";
+import { isAdmin } from "@/lib/admin-guard";
 import { adminHref, adminMode } from "@/lib/admin-session";
 
+// Nothing of the admin, not even its menu, renders until the session and
+// the email allowlist check out. Anyone else is sent to the login page.
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<p className="px-5 py-10 text-ink-soft md:px-8">Checking your sign-in…</p>}>
+      <AdminGate>{children}</AdminGate>
+    </Suspense>
+  );
+}
+
+async function AdminGate({ children }: { children: React.ReactNode }) {
+  await connection();
+  if (!(await isAdmin())) redirect(adminHref("/login"));
+
   const open = adminMode() === "open";
   const links = [
     { href: adminHref(), label: "Students" },
@@ -39,7 +56,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       </header>
       {open && (
         <p className="border-b border-rule bg-paper px-5 py-2 text-center text-caption text-ink-soft">
-          Development mode: the admin is open with no login. To require sign-in, set NEON_AUTH_BASE_URL, NEON_AUTH_COOKIE_SECRET and ADMIN_EMAILS (see README).
+          Development mode on sample data: the admin is open with no login. With a real database it needs sign-in (see README).
         </p>
       )}
       <main className="mx-auto max-w-[1280px] px-5 py-10 md:px-8 md:py-14">{children}</main>

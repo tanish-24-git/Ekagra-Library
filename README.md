@@ -44,9 +44,9 @@ Sign-in uses Neon Auth (Better Auth, hosted by Neon): email and password, or Con
 
 | Where | Settings | How to open it |
 | --- | --- | --- |
-| Your computer (`npm run dev`) | `ADMIN_EMAILS` empty | `http://localhost:3000/admin`, no login |
+| Your computer (`npm run dev`) on sample data | no `DATABASE_URL`, `ADMIN_EMAILS` empty | `http://localhost:3000/admin`, no login |
 | Your computer or the live site | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` and `ADMIN_EMAILS` set | `/admin` (or `/<ADMIN_PATH>` if set), then sign in |
-| Live site without those settings | | Admin is switched off: every admin URL answers 404 |
+| Anywhere with a real database but without those settings | | Admin is switched off: every admin URL answers 404 |
 
 First time: open the admin's login page, choose **Create your admin account**, and use an address from `ADMIN_EMAILS`. Or choose **Continue with Google** with that address. Accounts can only be created from this page and only for listed addresses.
 
@@ -65,13 +65,21 @@ When sign-in is set up:
 - With `ADMIN_PATH` set, `/admin` always answers 404 and the admin is served only from the secret path.
 - Wrong sign-ins are slowed down and locked out after five tries for 15 minutes; Neon Auth adds its own limits.
 - Public sign-up is closed: `/api/auth/sign-up` answers 404.
-- Admin API routes (`/api/students`, `/api/seats`, `GET /api/enquiries`) answer 404 without a session.
 - Admin responses send `X-Robots-Tag: noindex`. `robots.txt` deliberately doesn't mention the admin, because that would advertise it.
-- The proxy (`src/proxy.ts`) checks for the session cookie; each admin page, action and API handler verifies the session and the email list (`src/lib/admin-guard.ts`).
+- The proxy (`src/proxy.ts`) checks for the session cookie. The admin layout renders nothing until the session and email list check out (`src/lib/admin-guard.ts`), and every page, Server Action and the document route checks again.
 
 Changing `ADMIN_PATH` needs a rebuild, because the admin's links are rendered at build time.
 
 On an office network that inspects HTTPS, Node can't reach Neon (`fetch failed`). `npm run dev` already trusts the operating system's certificates (`src/instrumentation.ts`). For other Node commands, such as `npm run db:push`, start them with `$env:NODE_OPTIONS="--use-system-ca"` in PowerShell.
+
+## Security
+
+- **No data API.** Pages render on the server and every change goes through a Server Action. The only API routes are `/api/auth` (Neon Auth sign-in) and `/api/cron/reminders` (needs `Authorization: Bearer <CRON_SECRET>`). The public enquiry form is a Server Action limited to five enquiries per connection every ten minutes.
+- **Database only through Drizzle on the server.** The browser never talks to Neon. Every table has row-level security on with no policies, so Neon's Data API roles see nothing even if a grant is added by mistake. The site isn't using Neon's Data API: switch it off in the Neon console (Data API) to remove that endpoint entirely.
+- **ID documents** are encrypted, served only inside the admin to a verified admin, never cached, and sent with a sandbox policy. Uploads must really be JPG, PNG, WebP or PDF (checked from the file's bytes, not its name).
+- **Secrets** (database URL, keys, cron token, admin path) exist only on the server; the browser files contain none of them.
+- **Headers:** `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, HSTS, a strict `Permissions-Policy`, and no `X-Powered-By`.
+- The admin is never open without a login when a real database is connected.
 
 ## ID documents
 
@@ -129,7 +137,7 @@ At launch:
 src/
   app/(site)/        public pages: home, gallery
   app/admin/         admin (served from ADMIN_PATH): login, students, enquiries
-  app/api/           students, seats, enquiries, health
+  app/api/           auth (Neon Auth sign-in), cron (fee reminders)
   components/        home sections, gallery, admin, shared UI
   content/           site copy (site.ts), stock photos, gallery list
   db/                Drizzle schema and Neon client

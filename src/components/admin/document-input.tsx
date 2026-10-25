@@ -29,19 +29,24 @@ type Props = {
   file?: File;
   onChange: (file: File | undefined) => void;
   serverError?: string;
+  // The server response the error came from. Picking another file hides the
+  // error until the next response.
+  attempt: object;
 };
 
-export function DocumentInput({ label, file, onChange, serverError }: Props) {
+export function DocumentInput({ label, file, onChange, serverError, attempt }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [preview, setPreview] = useState<string>();
+  const [dismissedFor, setDismissedFor] = useState<object>();
 
   // Free the preview's object URL when it's replaced or the field goes away.
   useEffect(() => () => (preview ? URL.revokeObjectURL(preview) : undefined), [preview]);
 
   async function pick(picked: File | undefined) {
     setError(undefined);
+    setDismissedFor(attempt);
     if (!picked) return;
     if (!DOCUMENT_TYPES.includes(picked.type)) {
       setError("Upload a JPG, PNG, WebP or PDF file. iPhone HEIC photos: take a screenshot of the photo and upload that.");
@@ -59,12 +64,13 @@ export function DocumentInput({ label, file, onChange, serverError }: Props) {
   }
 
   function clear() {
+    setDismissedFor(attempt);
     setPreview(undefined);
     onChange(undefined);
     if (input.current) input.current.value = "";
   }
 
-  const shownError = error ?? (file ? undefined : serverError);
+  const shownError = error ?? (dismissedFor === attempt ? undefined : serverError);
 
   return (
     <div className="text-caption text-ink-soft">

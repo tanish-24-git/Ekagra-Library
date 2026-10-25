@@ -2,7 +2,7 @@ import { z } from "zod";
 import { indianMobile, optionalText, personName } from "./fields";
 
 // The public enquiry form. Used in the browser for instant checks and in
-// /api/enquiries for the real validation.
+// the submitEnquiry Server Action for the real validation.
 export const enquirySchema = z.object({
   name: personName,
   phone: indianMobile,

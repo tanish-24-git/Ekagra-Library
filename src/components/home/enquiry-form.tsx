@@ -4,6 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { buttonClass } from "@/components/ui/button";
 import { enquirySchema, type EnquiryField } from "@/lib/enquiry";
+import { submitEnquiry } from "@/app/(site)/actions";
 import { cn } from "@/lib/cn";
 import { ExamSelect } from "./exam-select";
 
@@ -40,6 +41,7 @@ export function EnquiryForm() {
   const [touched, setTouched] = useState<Partial<Record<EnquiryField, boolean>>>({});
   const [serverErrors, setServerErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+  const [refusal, setRefusal] = useState<string>();
   const [sent, setSent] = useState<{ name: string; phone: string } | null>(null);
   const [exams, setExams] = useState<string[]>([]);
 
@@ -80,20 +82,16 @@ export function EnquiryForm() {
 
     setStatus("sending");
     const company = (e.currentTarget.elements.namedItem("company") as HTMLInputElement | null)?.value;
-    const res = await fetch("/api/enquiries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, company }),
-    }).catch(() => null);
+    const result = await submitEnquiry({ ...payload, company }).catch(() => null);
 
-    if (res?.ok) {
+    if (result?.ok) {
       setSent({ name: values.name.trim().split(/\s+/)[0], phone: formatPhone(values.phone) });
       setStatus("idle");
       return;
     }
-    const json = await res?.json().catch(() => null);
-    const fields = (json?.fields ?? {}) as Partial<Record<EnquiryField, string[]>>;
+    const fields = (result && !result.ok && result.fields) || {};
     setServerErrors(Object.fromEntries(ORDER.filter((k) => fields[k]?.length).map((k) => [k, fields[k]![0]])));
+    setRefusal(result && !result.ok ? result.error : undefined);
     setStatus("error");
   }
 
@@ -202,9 +200,10 @@ export function EnquiryForm() {
         </button>
         {status === "error" && (
           <p role="alert" className="text-caption text-alert">
-            {Object.values(serverErrors).some(Boolean)
-              ? "Check the highlighted fields and send again."
-              : "Couldn’t send your enquiry. Check your connection and try again, or call us."}
+            {refusal ??
+              (Object.values(serverErrors).some(Boolean)
+                ? "Check the highlighted fields and send again."
+                : "Couldn’t send your enquiry. Check your connection and try again, or call us.")}
           </p>
         )}
       </div>
